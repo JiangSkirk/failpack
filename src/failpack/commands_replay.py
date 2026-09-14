@@ -81,6 +81,62 @@ def _normalize_contains_entries(raw: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _what_broke(check: CheckResult) -> str:
+    """Plain-English one-liner for a failed check."""
+    name = check.name
+    if name == "exit_code":
+        return (
+            f"session exit code drifted "
+            f"(expected {check.expected}, got {check.actual})"
+        )
+    if name == "min_events":
+        return f"session event count too low ({check.detail})"
+    if name.startswith("fingerprint:"):
+        path = name.split(":", 1)[1]
+        return f"artifact fingerprint drifted for {path}"
+    if name.startswith("glob_fingerprint:"):
+        pattern = name.split(":", 1)[1]
+        return f"written-file set drifted (glob {pattern})"
+    if name.startswith("substring:"):
+        path = name.split(":", 1)[1]
+        return f"expected error/signal text missing in {path}"
+    if name.startswith("tool_denied_contains:"):
+        needle = name.split(":", 1)[1]
+        return f"denied-tool signal missing (looking for {needle!r})"
+    if name.startswith("bash_output_contains:"):
+        needle = name.split(":", 1)[1]
+        return f"Bash output signal missing (looking for {needle!r})"
+    if name == "assertions":
+        return "no assertions defined for this pack"
+    return check.detail or name
+
+
+def _next_step(check: CheckResult, pack_id: str) -> str:
+    """Actionable next step for a failed check."""
+    if check.hint:
+        hint = check.hint
+        if "re-promote" in hint:
+            return (
+                f"restore the golden signal, or run `failpack re-promote {pack_id}` "
+                "if the change is intentional"
+            )
+        if "artifact drifted" in hint or "artifact missing" in hint:
+            return (
+                f"{hint}; restore the file, or `failpack re-promote {pack_id}` "
+                "if the new content is the new golden"
+            )
+        if "denied tool" in hint or "Bash output" in hint:
+            return (
+                f"{hint}; or `failpack re-promote {pack_id}` after intentional "
+                "transcript changes"
+            )
+        return hint
+    return (
+        f"inspect `.failpack/packs/{pack_id}/`, then restore or "
+        f"`failpack re-promote {pack_id}`"
+    )
+
+
 @dataclass
 class ReplayReport:
     pack_id: str
@@ -89,6 +145,35 @@ class ReplayReport:
     @property
     def ok(self) -> bool:
         return all(c.ok for c in self.checks) and bool(self.checks)
+
+    @property
+    def failed_checks(self) -> list[CheckResult]:
+        return [c for c in self.checks if not c.ok]
+
+    def story_lines(self) -> list[str]:
+        """One coherent short narrative for humans (PASS or FAIL)."""
+        if self.ok:
+            n = len(self.checks)
+            return [
+                f"STORY: Pack '{self.pack_id}' passed all {n} check"
+                f"{'s' if n != 1 else ''}.",
+                "  Nothing to fix — golden regression memory is intact.",
+            ]
+
+        failed = self.failed_checks
+        primary = failed[0]
+        lines = [
+            f"STORY: Pack '{self.pack_id}' failed "
+            f"{len(failed)} of {len(self.checks)} check"
+            f"{'s' if len(self.checks) != 1 else ''}.",
+            f"  What broke: {_what_broke(primary)}",
+            f"  Assertion:  {primary.name}",
+            f"  Next:       {_next_step(primary, self.pack_id)}",
+        ]
+        if len(failed) > 1:
+            others = ", ".join(c.name for c in failed[1:])
+            lines.append(f"  Also failed: {others}")
+        return lines
 
     def summary_lines(self, *, color: bool | None = None) -> list[str]:
         enabled = use_color() if color is None else color
@@ -108,6 +193,9 @@ class ReplayReport:
                     lines.append("         diff:")
                     for dline in c.diff.splitlines():
                         lines.append(f"           {dline}")
+        if not self.ok:
+            lines.append("")
+            lines.extend(self.story_lines())
         result = "PASS" if self.ok else "FAIL"
         lines.append(
             "RESULT: " + paint(result, "green" if self.ok else "red", enabled=enabled)
@@ -119,6 +207,7 @@ class ReplayReport:
             "pack_id": self.pack_id,
             "ok": self.ok,
             "checks": [c.to_dict() for c in self.checks],
+            "story": self.story_lines(),
         }
 
     def to_json(self, *, indent: int = 2) -> str:
@@ -170,7 +259,14 @@ class ReplayAllReport:
         )
         if failed:
             lines.append("  failed packs: " + ", ".join(failed))
+            lines.append("  tip: failpack explain <id>  # short narrative for a FAIL")
             lines.append("  tip: failpack re-promote <id> after intentional fixes")
+            # One coherent story per failed pack (keeps --all readable)
+            for report in self.reports:
+                if report.ok:
+                    continue
+                lines.append("")
+                lines.extend(report.story_lines())
         result = "PASS" if self.ok else "FAIL"
         lines.append(
             "RESULT: "

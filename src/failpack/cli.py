@@ -11,6 +11,7 @@ from failpack.commands_capture import cmd_capture
 from failpack.commands_completion import cmd_completion
 from failpack.commands_demo import cmd_demo
 from failpack.commands_doctor import cmd_doctor
+from failpack.commands_explain import cmd_explain
 from failpack.commands_export import cmd_export
 from failpack.commands_import import cmd_import
 from failpack.commands_init import cmd_init
@@ -48,6 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack list\n"
             "  failpack show demo-missing-import\n"
             "  failpack report --github\n"
+            "  failpack explain my-failure\n"
             "  failpack lint\n"
             "  failpack promote --dry-run my-failure\n"
             "  failpack rename old-id new-id\n"
@@ -383,10 +385,12 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack replay demo-missing-import --no-diff\n"
             "\n"
             "On failure, human output prints expected vs actual plus a one-line hint\n"
-            "(e.g. re-promote after intentional change / artifact drifted — inspect path).\n"
+            "(e.g. re-promote after intentional change / artifact drifted — inspect path),\n"
+            "then a short STORY block (what broke / which assertion / what to do next).\n"
             "Fingerprint failures also show a short unified diff of expected vs actual\n"
             "artifact text when a promote-time snapshot exists (disable with --no-diff).\n"
             "replay --all ends with SUMMARY (passed/failed counts) and failed pack ids.\n"
+            "Prefer `failpack explain <id>` when you only want the story.\n"
             "Colors are on for TTYs; set NO_COLOR=1 to disable.\n"
         ),
     )
@@ -412,6 +416,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="Disable unified diffs under fingerprint FAIL blocks",
     )
     p_rep.set_defaults(func=_handle_replay)
+
+    p_explain = sub.add_parser(
+        "explain",
+        help="Short narrative for a replay FAIL (what / assert / next)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack explain demo-missing-import\n"
+            "  failpack explain                 # every currently failing golden\n"
+            "\n"
+            "Replays assertions (no verbose check dump) and prints one STORY:\n"
+            "what broke, which assertion, what to do next.\n"
+            "Exit 0 on PASS, non-zero on FAIL (same signal as replay).\n"
+        ),
+    )
+    p_explain.add_argument(
+        "pack_id",
+        nargs="?",
+        default=None,
+        help="Pack id (default: explain every failing golden pack)",
+    )
+    p_explain.set_defaults(func=_handle_explain)
 
     p_report = sub.add_parser(
         "report",
@@ -686,6 +712,12 @@ def _handle_replay(args: argparse.Namespace) -> int:
         sys.stdout.write(report.to_json())
     else:
         print("\n".join(report.summary_lines()))
+    return 0 if report.ok else 1
+
+
+def _handle_explain(args: argparse.Namespace) -> int:
+    report = cmd_explain(args.pack_id, root=args.root)
+    print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1
 
 

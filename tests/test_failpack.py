@@ -89,6 +89,10 @@ def test_replay_fails_when_assertion_mutated(workspace: Path) -> None:
     assert "actual:" in summary
     assert "hint:" in summary
     assert "re-promote after intentional change" in summary
+    assert "STORY:" in summary
+    assert "What broke:" in summary
+    assert "Assertion:" in summary
+    assert "Next:" in summary
 
 
 def test_replay_fails_when_artifact_mutated(workspace: Path) -> None:
@@ -442,8 +446,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_0_8_0() -> None:
-    assert __version__ == "0.8.0"
+def test_version_is_0_9_0() -> None:
+    assert __version__ == "0.9.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -638,6 +642,48 @@ def test_replay_all_skips_non_golden_and_fails_on_broken(workspace: Path) -> Non
     assert "1 failed" in summary
     assert f"failed packs: {DEMO_ID}" in summary
     assert "re-promote" in summary
+    assert "failpack explain" in summary
+    assert "STORY:" in summary
+
+
+def test_explain_fail_and_pass(workspace: Path) -> None:
+    from failpack.commands_explain import cmd_explain
+
+    _capture_and_promote(workspace, pack_id="explain-me")
+    ok = cmd_explain("explain-me", root=workspace)
+    assert ok.ok
+    text = "\n".join(ok.summary_lines())
+    assert "STORY:" in text
+    assert "passed all" in text
+    assert "RESULT: PASS" in text
+
+    assertions_path = workspace / ".failpack" / "packs" / "explain-me" / "assertions.yaml"
+    data = yaml.safe_load(assertions_path.read_text(encoding="utf-8"))
+    data["exit_code"] = 0
+    assertions_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    bad = cmd_explain("explain-me", root=workspace)
+    assert not bad.ok
+    story = "\n".join(bad.summary_lines())
+    assert "What broke:" in story
+    assert "exit code" in story.lower()
+    assert "Assertion:  exit_code" in story
+    assert "Next:" in story
+    assert "re-promote explain-me" in story
+    assert "RESULT: FAIL" in story
+
+    # omit id → explain every failing golden
+    all_fail = cmd_explain(root=workspace)
+    assert not all_fail.ok
+    assert "explain-me" in "\n".join(all_fail.summary_lines())
+
+
+def test_cli_explain(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _capture_and_promote(workspace, pack_id="cli-explain")
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "explain", "cli-explain"])
+    assert exc.value.code == 0
+    assert "STORY:" in capsys.readouterr().out
 
 
 def test_replay_all_empty_workspace(workspace: Path) -> None:
@@ -939,6 +985,7 @@ def test_help_mentions_demo_export_import() -> None:
     assert "export" in help_text
     assert "import" in help_text
     assert "show" in help_text
+    assert "explain" in help_text
     names = set()
     for action in parser._subparsers._group_actions:  # noqa: SLF001
         names.update(action.choices.keys())
@@ -946,6 +993,7 @@ def test_help_mentions_demo_export_import() -> None:
     assert "export" in names
     assert "import" in names
     assert "show" in names
+    assert "explain" in names
 
 
 def test_bundled_demo_fixture_loads() -> None:
@@ -963,15 +1011,24 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack replay" in text
     assert "failpack demo" in text
     assert "failpack show" in text
-    assert "0.8.0" in text
+    assert "failpack explain" in text
+    assert "0.9.0" in text
+    assert "Five-minute path" in text
     assert "Pack lifecycle" in text
     assert "failpack report" in text
     assert "failpack lint" in text
+    assert "run-lint" in text
+    assert "step-summary" in text
     assert "tool_denied_contains" in text
     assert "bash_output_contains" in text
     assert "badge.svg" in text
     assert "Stet" in text
     assert "AgentClash" in text
+    assert (REPO / "docs" / "PACKS.md").is_file()
+    packs = (REPO / "docs" / "PACKS.md").read_text(encoding="utf-8")
+    assert "demo-missing-import" in packs
+    assert "demo-tool-denied" in packs
+    assert "demo-five-minute" in packs
 
 
 def test_rm_refuses_golden_without_force(workspace: Path) -> None:
@@ -1103,9 +1160,11 @@ def test_completion_bash_and_zsh_smoke() -> None:
     assert "complete -F _failpack failpack" in bash
     assert "promote" in bash
     assert "rename" in bash
+    assert "explain" in bash
     zsh = cmd_completion("zsh")
     assert "#compdef failpack" in zsh
     assert "_failpack" in zsh
+    assert "explain" in zsh
     with pytest.raises(ValueError, match="Unsupported shell"):
         cmd_completion("fish")
 
@@ -1124,7 +1183,7 @@ def test_cli_completion_and_lifecycle_help(capsys: pytest.CaptureFixture[str]) -
         names.update(action.choices.keys())
         if "promote" in action.choices:
             promote_help = action.choices["promote"].format_help()
-    assert {"rm", "rename", "completion"} <= names
+    assert {"rm", "rename", "completion", "explain"} <= names
     assert promote_help is not None
     assert "--dry-run" in promote_help
 
@@ -1225,6 +1284,8 @@ def test_report_markdown_all_and_github(
     assert not bad.ok
     assert "## Failures" in bad.markdown
     assert "**FAIL**" in bad.markdown
+    assert "STORY:" in bad.markdown
+    assert "failpack explain" in bad.markdown
     # render helper covers empty all-report
     empty_md = render_report_markdown(
         __import__("failpack.commands_replay", fromlist=["ReplayAllReport"]).ReplayAllReport()

@@ -51,6 +51,10 @@ def render_report_markdown(
         for r in failed:
             lines.append(f"### `{_md_escape(r.pack_id)}`")
             lines.append("")
+            # Coherent short narrative first
+            for story_line in r.story_lines():
+                lines.append(f"> {_md_escape(story_line)}")
+            lines.append("")
             for c in r.checks:
                 if c.ok:
                     continue
@@ -73,7 +77,8 @@ def render_report_markdown(
                     lines.append("```")
             lines.append("")
         lines.append(
-            "_Tip: `failpack re-promote <id>` after intentional fixes._"
+            "_Tip: `failpack explain <id>` for the short story; "
+            "`failpack re-promote <id>` after intentional fixes._"
         )
         lines.append("")
 

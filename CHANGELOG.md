@@ -5,6 +5,31 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-09-14
+
+### Added
+
+- **`failpack explain [id]`** — short coherent FAIL story (what broke / which
+  assertion / what to do next). Omit *id* to explain every currently failing
+  golden pack.
+- Replay **STORY** block on FAIL (single pack and `replay --all`); report
+  markdown and `--json` include the same narrative.
+- **`docs/PACKS.md`** — index of the four shipped goldens + `failpack demo`
+  path, with failure class each teaches.
+- README **five-minute path** polish + copy-pasteable Action / step-summary
+  snippet (`run-lint` / `step-summary` defaults documented).
+
+### Changed
+
+- Version bump to **0.9.0**.
+- `examples/five-minute-demo.sh` expects **0.9.x**.
+- Completion scripts list `explain`.
+
+### Notes
+
+- Zero coupling to Echo / Orin / titan-agent (or any live agent install).
+- No monetization in this release — open CLI stays the product.
+
 ## [0.8.0] — 2026-09-14
 
 ### Added
