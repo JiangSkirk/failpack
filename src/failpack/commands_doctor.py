@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from failpack.commands_capture import claude_projects_dir
 from failpack.commands_list import list_packs
 from failpack.paths import FAILPACK_DIR, PACKS_DIR, failpack_dir, find_root
 
@@ -71,6 +72,46 @@ def _check_pyyaml() -> DoctorCheck:
     return DoctorCheck("pyyaml", True, f"importable (version {version})")
 
 
+def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
+    """Report whether ``~/.claude/projects`` exists and how many sessions.
+
+    Missing Claude Code is **not** a failure — FailPack works with fixtures.
+    When sessions are found, tip ``capture --claude-latest``.
+    """
+    projects = claude_projects_dir(home=home)
+    if not projects.is_dir():
+        return DoctorCheck(
+            "claude-projects",
+            True,
+            f"not found ({projects}) — optional",
+            fix=(
+                "Install/use Claude Code, or capture a fixture / exported JSONL. "
+                "Try: failpack demo"
+            ),
+        )
+
+    sessions = [p for p in projects.rglob("*.jsonl") if p.is_file()]
+    n = len(sessions)
+    if n == 0:
+        return DoctorCheck(
+            "claude-projects",
+            True,
+            f"found at {projects} (0 session *.jsonl)",
+            fix="After a Claude Code run, try: failpack capture --claude-latest --id my-failure",
+        )
+
+    newest = max(sessions, key=lambda p: p.stat().st_mtime)
+    return DoctorCheck(
+        "claude-projects",
+        True,
+        f"found at {projects} ({n} session{'s' if n != 1 else ''})",
+        fix=(
+            f"Newest: {newest.name} — try: "
+            "failpack capture --claude-latest --id my-failure"
+        ),
+    )
+
+
 def _check_layout(root: Path | None) -> list[DoctorCheck]:
     checks: list[DoctorCheck] = []
     project = find_root(root) if root is None else root.resolve()
@@ -82,7 +123,7 @@ def _check_layout(root: Path | None) -> list[DoctorCheck]:
                 "layout",
                 False,
                 f"no {FAILPACK_DIR}/ under {project}",
-                fix=f"Run `failpack init` in {project} (or pass --root).",
+                fix=f"Run `failpack init` in {project} (or pass --root). Or: failpack demo",
             )
         )
         return checks
@@ -121,7 +162,10 @@ def _check_layout(root: Path | None) -> list[DoctorCheck]:
                 "packs",
                 True,
                 "0 packs — capture a transcript to get started",
-                fix="failpack capture <transcript.jsonl> --id my-failure",
+                fix=(
+                    "failpack capture --claude-latest --id my-failure   "
+                    "# or: failpack demo"
+                ),
             )
         )
     else:
@@ -129,9 +173,10 @@ def _check_layout(root: Path | None) -> list[DoctorCheck]:
     return checks
 
 
-def cmd_doctor(root: Path | None = None) -> DoctorReport:
+def cmd_doctor(root: Path | None = None, *, home: Path | None = None) -> DoctorReport:
     report = DoctorReport()
     report.checks.append(_check_python())
     report.checks.append(_check_pyyaml())
+    report.checks.append(_check_claude_projects(home=home))
     report.checks.extend(_check_layout(root))
     return report

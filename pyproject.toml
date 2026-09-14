@@ -1,6 +1,6 @@
 [project]
 name = "failpack"
-version = "0.5.0"
+version = "0.6.0"
 description = "Turn coding-agent failure sessions into golden CI regression packs"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,6 +30,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/failpack"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/failpack/data/demo-failure.jsonl" = "failpack/data/demo-failure.jsonl"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
