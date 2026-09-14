@@ -1,18 +1,28 @@
 # Publishing FailPack to PyPI / TestPyPI
 
-FailPack is installable from GitHub today:
+**Status:** FailPack is live on PyPI since **1.5.5**
+([pypi.org/project/failpack](https://pypi.org/project/failpack/)). Strangers
+should install with:
+
+```bash
+pip install failpack
+failpack demo --fast
+```
+
+Git fallback (optional):
 
 ```bash
 pip install "git+https://github.com/JiangSkirk/failpack.git"
 ```
 
-This doc is the exact path to publish a release to **TestPyPI** or **PyPI**
-when you have a token. **Do not upload without a token in the environment.**
+This doc is the exact path to publish a **new** release to **TestPyPI** or
+**PyPI** when you have a token. **Do not upload without a token in the
+environment.** Do not re-upload an already-published version.
 
 ## Prerequisites
 
 - Python **3.11+**
-- A clean checkout on the release tag (e.g. `v1.3.0`)
+- A clean checkout on the release tag (e.g. `v1.5.6`)
 - Build tools:
 
 ```bash
@@ -23,7 +33,7 @@ python -m pip install -U build twine
 
 ```bash
 grep -E '^version|^__version__' pyproject.toml src/failpack/__init__.py
-# both should match the release (e.g. 1.3.0)
+# both should match the release (e.g. 1.5.6)
 
 failpack --version   # after editable install
 ```
@@ -103,11 +113,16 @@ failpack demo --fast
 
 - Create / confirm the GitHub Release tag matching the version
 - Update Action pins / docs if this release is the new recommended `@vX.Y.Z`
+  (quality-freeze docs cuts usually keep `@v1.5.0` when Action behavior is
+  unchanged)
 - Prefer Trusted Publishing (OIDC) from GitHub Actions when available instead of
   long-lived tokens
+- Confirm [pypi.org/project/failpack](https://pypi.org/project/failpack/) shows
+  the new version; in-tree Quickstart stays `pip install failpack` first
 
 ## Non-goals
 
 - Do **not** upload if `TWINE_PASSWORD` / token is missing
+- Do **not** re-upload a version that is already on PyPI
 - No monetization / checkout wiring in this publish path
 - No coupling to Echo / Orin / titan-agent

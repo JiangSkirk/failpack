@@ -73,13 +73,12 @@ Checkout via merchant of record (**Creem** or **Paddle**). We pick the MoR that 
 ## Quickstart
 
 ```bash
-# once on PyPI (preferred when published)
 pip install failpack
-
-# works today — git fallback
-pip install "git+https://github.com/JiangSkirk/failpack.git"
-
 failpack demo --fast
+
+# optional git fallback
+# pip install "git+https://github.com/JiangSkirk/failpack.git"
+
 # then: failpack init / capture / promote / replay as needed
 ```
 

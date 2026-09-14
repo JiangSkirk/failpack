@@ -5,6 +5,30 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.6] — 2026-09-14
+
+### Changed
+
+- **PyPI-live honesty pass:** README / site / LANDING Quickstart lead with
+  `pip install failpack` + `failpack demo --fast`. Git install is fallback only.
+  QUALITY_BAR marks **PyPI token + first upload** as **done** (1.5.5).
+  [`docs/PUBLISH.md`](docs/PUBLISH.md) notes post-publish status.
+- Pages wording tightened: enable GitHub Actions as Pages source is a
+  **one-time Settings flip**, not a product gap. Expected URL remains
+  [https://jiangskirk.github.io/failpack/](https://jiangskirk.github.io/failpack/).
+- CLI help / doctor tips lead with PyPI install.
+- Version bump to **1.5.6**.
+- Docs / walkthrough / QUALITY_BAR version samples → **1.5.6**.
+- GitHub Release **`v1.5.6`** + [`RELEASE_NOTES_1.5.6.md`](RELEASE_NOTES_1.5.6.md).
+
+### Notes
+
+- Quality-freeze honesty only. Action pin stays **`@v1.5.0`** (no Action
+  behavior change). **Do not re-upload to PyPI from this cut.**
+- Zero coupling to Echo / Orin / titan-agent. No live Creem / KYC / pay links.
+  Remaining wow gaps: real-user packs, unpaid stranger walkthrough, Pages
+  enable (human Settings flip if still dark).
+
 ## [1.5.5] — 2026-09-14
 
 ### Added
