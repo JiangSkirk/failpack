@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[`docs/SUPPORT.md`](docs/SUPPORT.md)** — open support path: GitHub Issues +
   email `8725598a@gmail.com` (owner JiangSkirk). Linked from README and
   CONTRIBUTING. No Discord.
+- GitHub Release **`v1.5.2`** + [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md).
+
+### Fixed
+
+- Pytest hermeticity: `test_cli_list_prints_table` and `test_cli_show_json`
+  pass `--root` to the repo checkout so `pytest -q tests` is green from any
+  cwd (no ambient `.failpack` under `/tmp` / `/workspace`).
 
 ### Changed
 
@@ -23,11 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Doctor Cursor tips use `--id cursor-fail` (aligned with README).
 - [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md): Support path marked done; PyPI /
   real-user packs still honest (open).
+- [`docs/LANDING.md`](docs/LANDING.md) Quickstart leads with `failpack demo --fast`
+  (small stranger-doc sync with README / walkthrough).
 
 ### Notes
 
-- Support path + walkthrough polish only. Action pin stays **`@v1.5.0`** (no
-  new GitHub Release required for this cut).
+- Quality-freeze cut: support path, hermetic tests, landing sync, and the
+  missing **`v1.5.2`** GitHub Release. Action pin stays **`@v1.5.0`** (no Action
+  retarget — docs/examples/`init --ci` already pin the shipped Action at
+  `v1.5.0`; this release does not change Action inputs/behavior).
 - Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
   without a token in env.
 

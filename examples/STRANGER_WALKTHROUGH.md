@@ -168,6 +168,7 @@ failpack lint
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
 - [`../docs/SUPPORT.md`](../docs/SUPPORT.md) — GitHub Issues + email
-- [`../RELEASE_NOTES_1.5.0.md`](../RELEASE_NOTES_1.5.0.md) — tagged GitHub Release `v1.5.0`
+- [`../RELEASE_NOTES_1.5.2.md`](../RELEASE_NOTES_1.5.2.md) — tagged GitHub Release `v1.5.2`
+- [`../RELEASE_NOTES_1.5.0.md`](../RELEASE_NOTES_1.5.0.md) — prior Release `v1.5.0`
 - [`../docs/QUALITY_BAR.md`](../docs/QUALITY_BAR.md) — honest sell-ready gaps
 - [`../CHANGELOG.md`](../CHANGELOG.md)

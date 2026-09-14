@@ -2,7 +2,7 @@
 
 Ship these under `.failpack/packs/` as regression memory. Each golden teaches one
 failure class — copy the fixture, capture your own session, or start from
-`failpack demo`.
+`failpack demo --fast`.
 
 ## Shipped goldens (4) + demo path (5th)
 

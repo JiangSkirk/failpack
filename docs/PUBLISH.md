@@ -96,7 +96,7 @@ Then strangers can:
 
 ```bash
 pip install failpack
-failpack demo
+failpack demo --fast
 ```
 
 ## 6. After publish

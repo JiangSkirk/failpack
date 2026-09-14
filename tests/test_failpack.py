@@ -1031,7 +1031,7 @@ def test_list_format_table_is_aligned() -> None:
 
 def test_cli_list_prints_table(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc:
-        main(["list"])
+        main(["--root", str(REPO), "list"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "ID" in out
@@ -1090,6 +1090,7 @@ def test_examples_docs_exist() -> None:
     assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "cursor-projects" in walk_body
     assert "~/.local/bin" in walk_body
+    assert "RELEASE_NOTES_1.5.2" in walk_body or "v1.5.2" in walk_body
     assert "RELEASE_NOTES_1.5.0" in walk_body or "v1.5.0" in walk_body
     assert "failpack diff" in walk_body or "list --json" in walk_body or "packs --json" in walk_body
     assert "Clean up with:" in walk_body
@@ -1383,6 +1384,14 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "testpypi" in publish.lower() or "TestPyPI" in publish
     packs = (REPO / "docs" / "PACKS.md").read_text(encoding="utf-8")
     assert "demo-missing-import" in packs
+    assert "demo --fast" in packs
+    landing = (REPO / "docs" / "LANDING.md").read_text(encoding="utf-8")
+    assert "failpack demo --fast" in landing
+    assert (REPO / "RELEASE_NOTES_1.5.2.md").is_file()
+    notes152 = (REPO / "RELEASE_NOTES_1.5.2.md").read_text(encoding="utf-8")
+    assert "1.5.2" in notes152
+    assert "SUPPORT.md" in notes152
+    assert "@v1.5.0" in notes152
     assert (REPO / "RELEASE_NOTES_1.5.0.md").is_file()
     notes15 = (REPO / "RELEASE_NOTES_1.5.0.md").read_text(encoding="utf-8")
     assert "1.5.0" in notes15
@@ -1776,7 +1785,7 @@ def test_bash_output_contains_fail_modes(workspace: Path) -> None:
 
 def test_cli_show_json(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc:
-        main(["show", DEMO_TOOL_DENIED, "--json"])
+        main(["--root", str(REPO), "show", DEMO_TOOL_DENIED, "--json"])
     assert exc.value.code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["pack_id"] == DEMO_TOOL_DENIED
