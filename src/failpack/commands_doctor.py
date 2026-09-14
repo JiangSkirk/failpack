@@ -135,8 +135,10 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
             True,
             f"not found ({projects}) — optional",
             fix=(
-                "After a Claude Code run: failpack capture --claude-latest --id my-failure  "
-                "·  or ~60s wow: failpack demo --fast  ·  or: failpack capture --cursor-latest"
+                "No sessions yet — try: failpack demo --fast  "
+                "·  or prove Claude one-shot: ./examples/claude-latest-hermetic.sh "
+                "(fake HOME + fixtures/claude-code-failure.jsonl)  "
+                "·  or after a Claude Code run: failpack capture --claude-latest --id my-failure"
             ),
         )
 
@@ -148,7 +150,9 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
             True,
             f"found at {projects} (0 session *.jsonl)",
             fix=(
-                "One-shot after your next Claude Code failure: "
+                "Empty projects dir — try: failpack demo --fast  "
+                "·  or hermetic one-shot: ./examples/claude-latest-hermetic.sh  "
+                "·  or after next Claude Code failure: "
                 "failpack capture --claude-latest --id my-failure"
             ),
         )
