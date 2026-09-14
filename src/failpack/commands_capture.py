@@ -10,6 +10,7 @@ from pathlib import Path
 
 from failpack.pack import utc_now_iso, write_meta
 from failpack.paths import ARTIFACTS_DIR, PACKS_DIR, TRANSCRIPT_NAME, failpack_dir
+from failpack.schema import CURRENT_SCHEMA_VERSION, SCHEMA_VERSION_KEY
 from failpack.transcript import load_jsonl, slug_from_summary, summarize_events, write_artifacts
 
 
@@ -172,6 +173,7 @@ def cmd_capture(
             {
                 "id": pid,
                 "status": "captured",
+                SCHEMA_VERSION_KEY: CURRENT_SCHEMA_VERSION,
                 "created_at": utc_now_iso(),
                 "source_transcript": source_label,
                 "session_id": summary.get("session_id"),
