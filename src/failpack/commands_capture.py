@@ -129,20 +129,28 @@ def find_cursor_latest(*, home: Path | None = None) -> Path:
     projects = cursor_projects_dir(home=home)
     if not projects.is_dir():
         raise FileNotFoundError(
-            f"Cursor projects directory not found: {projects}. "
-            "No ~/.cursor/projects tree present. Export a Cursor agent "
-            "transcript as JSONL and pass the path, or use --claude-latest / "
-            "a fixture. See examples/cursor-latest-demo.md."
+            f"Cursor projects directory not found: {projects}.\n"
+            "One-shot after a Cursor agent run needs "
+            "~/.cursor/projects/<slug>/agent-transcripts/*.jsonl.\n"
+            "  • Run a Cursor agent session that fails, then:\n"
+            "      failpack capture --cursor-latest --id cursor-fail\n"
+            "  • No sessions yet? Prove the path hermetically (fake HOME + fixture):\n"
+            "      failpack demo --cursor-hermetic\n"
+            "    or: failpack demo --fast\n"
+            "  • Or pass a transcript path / --stdin."
         )
 
     candidates = _cursor_jsonl_candidates(projects)
     if not candidates:
         raise FileNotFoundError(
-            f"No Cursor agent *.jsonl transcripts under {projects}. "
+            f"No Cursor agent *.jsonl transcripts under {projects}.\n"
             "Expected something like "
-            "~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl. "
-            "Export a session as JSONL and pass the path, or see "
-            "examples/cursor-latest-demo.md."
+            "~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl.\n"
+            "One-shot: finish a Cursor agent run, then:\n"
+            "  failpack capture --cursor-latest --id cursor-fail\n"
+            "No sessions yet? Try the fixture path first:\n"
+            "  failpack demo --cursor-hermetic\n"
+            "  # or: failpack demo --fast"
         )
 
     def _sort_key(p: Path) -> tuple[float, int]:

@@ -15,10 +15,11 @@ Requires Python **3.11+**.
 
 ```bash
 pip install -e ".[dev]"
-failpack --version   # → failpack 1.5.8
+failpack --version   # → failpack 1.5.9
 failpack doctor --score
 failpack demo --fast         # ~60s stranger wow path (recommended)
 failpack demo --claude-hermetic  # prove --claude-latest without Claude
+failpack demo --cursor-hermetic  # prove --cursor-latest without Cursor
 failpack demo --skip-break   # optional full local wow path without break
 pytest -q
 ```
@@ -72,20 +73,37 @@ Stranger/CI proof (same idea; pip-first):
 ```bash
 failpack demo --claude-hermetic
 # checkout alias: ./examples/claude-latest-hermetic.sh
+failpack demo --cursor-hermetic
+# checkout alias: ./examples/cursor-latest-hermetic.sh
 ```
 
-### Cursor-ish paths (optional, safe docs only)
+### Cursor paths (`--cursor-latest`)
 
-FailPack does **not** auto-scan Cursor installs. If you export or copy a Cursor
-agent transcript as JSONL, capture it like any other file:
+FailPack best-effort scans `~/.cursor/projects/*/agent-transcripts` for the
+newest `*.jsonl`. Tests **must** use a fake HOME (never a real `~/.cursor`):
+
+```python
+home = tmp_path / "fake-home"
+session = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+agent = home / ".cursor" / "projects" / "demo" / "agent-transcripts" / session
+agent.mkdir(parents=True)
+# write *.jsonl under agent, then:
+cmd_capture(cursor_latest=True, home=home, ...)
+```
+
+Or prove the path without a live Cursor install:
+
+```bash
+failpack demo --cursor-hermetic
+```
+
+You can still capture an exported Cursor transcript as any other file:
 
 ```bash
 failpack capture /path/to/exported-session.jsonl --id cursor-fail
 ```
 
-Some Cursor / agent setups keep project-local logs under paths resembling
-`~/.cursor/projects/` or workspace `.cursor/` folders — treat those as **manual**
-inputs (pass the file or directory explicitly). Do not add live Cursor API coupling.
+Do not add live Cursor API coupling.
 
 ## Re-promote after intentional drift
 

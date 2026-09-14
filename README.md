@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.5.8-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.5.9-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** is regression memory for coding-agent failures.
 
@@ -23,10 +23,11 @@ Actions**), not a missing product.
 pip install failpack
 failpack demo --fast
 failpack demo --claude-hermetic   # prove capture --claude-latest (no Claude binary)
+failpack demo --cursor-hermetic   # prove capture --cursor-latest (no Cursor install)
 ```
 
 That is the whole product loop: **install → `demo --fast`** (+ optional
-hermetic Claude proof). Prefer `--fast` for strangers; plain `failpack demo`
+hermetic Claude / Cursor proofs). Prefer `--fast` for strangers; plain `failpack demo`
 adds doctor + intentional break/restore. Optional next steps after the wow:
 
 ```bash
@@ -62,13 +63,14 @@ First command after install:
 ```bash
 failpack demo --fast              # ~60s wow (recommended)
 failpack demo --claude-hermetic   # prove --claude-latest without Claude
+failpack demo --cursor-hermetic   # prove --cursor-latest without Cursor
 # failpack demo                   # full path with break/restore
 ```
 
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.5.8
+failpack --version          # → failpack 1.5.9
 failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
 ```
 
@@ -103,6 +105,8 @@ failpack watch fixtures/claude-code-failure.jsonl --id my-failure --force
 |---|---|
 | `failpack demo` | **One-command wow:** capture → promote → replay (+ intentional break) |
 | `failpack demo --fast` | **~60s stranger path:** capture → promote → replay only |
+| `failpack demo --claude-hermetic` | **Prove Claude one-shot** with fake HOME + bundled fixture (no Claude) |
+| `failpack demo --cursor-hermetic` | **Prove Cursor one-shot** with fake HOME + bundled fixture (no Cursor) |
 | `failpack init` | Create `.failpack/` layout (tip README → `demo` / `--claude-latest` / `--cursor-latest`) |
 | `failpack init --ci` | Also write a starter workflow pinned to `@v1.5.0` (or use `@main`) |
 | `failpack doctor` | Check env + Claude/Cursor projects + workspace; print actionable fixes |
@@ -182,6 +186,9 @@ failpack capture --claude-latest --id my-failure
 # checkout alias: ./examples/claude-latest-hermetic.sh
 # see examples/cursor-latest-demo.md (best-effort; fake HOME in tests)
 failpack capture --cursor-latest --id cursor-fail
+# no Cursor sessions yet? prove the path hermetically:
+#   failpack demo --cursor-hermetic
+# checkout alias: ./examples/cursor-latest-hermetic.sh
 ```
 
 ### Capture your own failure
@@ -255,9 +262,11 @@ same checks as a dedicated command.
 
 `--cursor-latest` best-effort scans `~/.cursor/projects/*/agent-transcripts` for the
 newest `*.jsonl` (main session preferred over `subagents/` on mtime ties). Tests
-must use a **fake HOME**. Manual path still works:
+must use a **fake HOME**. No Cursor install yet? Prove it hermetically:
 
 ```bash
+failpack demo --cursor-hermetic
+# checkout alias: ./examples/cursor-latest-hermetic.sh
 failpack capture --cursor-latest --id cursor-fail
 failpack capture /path/to/exported-session.jsonl --id cursor-fail
 ```
@@ -406,7 +415,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.8.md`](RELEASE_NOTES_1.5.8.md) / [`RELEASE_NOTES_1.5.7.md`](RELEASE_NOTES_1.5.7.md) / [`RELEASE_NOTES_1.5.6.md`](RELEASE_NOTES_1.5.6.md) / [`RELEASE_NOTES_1.5.5.md`](RELEASE_NOTES_1.5.5.md) / [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.9.md`](RELEASE_NOTES_1.5.9.md) / [`RELEASE_NOTES_1.5.8.md`](RELEASE_NOTES_1.5.8.md) / [`RELEASE_NOTES_1.5.7.md`](RELEASE_NOTES_1.5.7.md) / [`RELEASE_NOTES_1.5.6.md`](RELEASE_NOTES_1.5.6.md) / [`RELEASE_NOTES_1.5.5.md`](RELEASE_NOTES_1.5.5.md) / [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 

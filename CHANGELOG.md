@@ -5,6 +5,41 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.9] — 2026-09-14
+
+### Added
+
+- **`failpack demo --cursor-hermetic`** — first-class pip-installable Cursor
+  one-shot proof: fake HOME + bundled fixture under
+  `~/.cursor/projects/*/agent-transcripts/` → `capture --cursor-latest` →
+  `promote --suggest --write` → lint → replay. No live Cursor install and no
+  git clone required after `pip install failpack`.
+- Bundled package data `failpack/data/cursor-agent-failure.jsonl` (hatch
+  force-include), same shipping pattern as the Claude hermetic fixture.
+- [`examples/cursor-latest-hermetic.sh`](examples/cursor-latest-hermetic.sh) —
+  thin wrapper that delegates to `failpack demo --cursor-hermetic`.
+- GitHub Release **`v1.5.9`** + [`RELEASE_NOTES_1.5.9.md`](RELEASE_NOTES_1.5.9.md).
+
+### Changed
+
+- README / stranger walkthrough / QUALITY_BAR / site Quickstart lead with
+  `pip install failpack` then `failpack demo --fast` **and both** hermetic
+  demos (`--claude-hermetic`, `--cursor-hermetic`).
+- Doctor / capture / CLI tips prefer the CLI hermetic path when no Cursor
+  sessions exist.
+- Version bump to **1.5.9**.
+- Docs / walkthrough / site version samples → **1.5.9**.
+
+### Notes
+
+- Quality cut for pip-installable Cursor hermetic proof. Action pin stays
+  **`@v1.5.0`** (no Action behavior change). **Do not re-upload to PyPI from
+  this agent.**
+- Zero coupling to Echo / Orin / titan-agent. No live Creem / KYC / pay links.
+  Do **not** claim GitHub Pages is live if it still 404s. Remaining wow gaps:
+  real-user packs, unpaid stranger walkthrough, Pages enable (human Settings
+  flip if still dark).
+
 ## [1.5.8] — 2026-09-14
 
 ### Added

@@ -182,8 +182,10 @@ def _check_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
             True,
             f"not found ({projects}) — optional",
             fix=(
-                "Use Cursor agent transcripts, or capture a fixture / exported JSONL. "
-                "Try: failpack demo · or: failpack capture --claude-latest"
+                "No sessions yet — try: failpack demo --fast  "
+                "·  or prove Cursor one-shot: failpack demo --cursor-hermetic "
+                "(fake HOME + bundled fixture)  "
+                "·  or after a Cursor agent run: failpack capture --cursor-latest --id cursor-fail"
             ),
         )
 
@@ -195,7 +197,9 @@ def _check_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
             True,
             f"found at {projects} (0 agent *.jsonl)",
             fix=(
-                "After a Cursor agent run, try: "
+                "Empty projects dir — try: failpack demo --fast  "
+                "·  or hermetic one-shot: failpack demo --cursor-hermetic  "
+                "·  or after next Cursor agent failure: "
                 "failpack capture --cursor-latest --id cursor-fail"
             ),
         )
@@ -376,7 +380,10 @@ def _score_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
         empty_fix=(
             "After a Cursor agent run: failpack capture --cursor-latest --id cursor-fail"
         ),
-        missing_fix="Use Cursor, or skip and use: failpack demo",
+        missing_fix=(
+            "Install Cursor, or skip: failpack demo --cursor-hermetic  "
+            "(or failpack demo --fast)"
+        ),
     )
 
 

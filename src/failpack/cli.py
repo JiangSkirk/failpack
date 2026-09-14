@@ -47,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
             "examples:\n"
             "  failpack demo --fast\n"
             "  failpack demo --claude-hermetic\n"
+            "  failpack demo --cursor-hermetic\n"
             "  failpack doctor --score\n"
             "  failpack capture --claude-latest --id my-failure\n"
             "  failpack capture --cursor-latest --id my-failure\n"
@@ -73,6 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  pip install failpack\n"
             "  failpack demo --fast\n"
             "  failpack demo --claude-hermetic\n"
+            "  failpack demo --cursor-hermetic\n"
             "  # optional: pip install "
             '"git+https://github.com/JiangSkirk/failpack.git"\n'
             "\n"
@@ -147,6 +149,7 @@ def build_parser() -> argparse.ArgumentParser:
             "examples:\n"
             "  failpack demo --fast              # ~60s stranger path (recommended)\n"
             "  failpack demo --claude-hermetic   # prove capture --claude-latest (no Claude)\n"
+            "  failpack demo --cursor-hermetic   # prove capture --cursor-latest (no Cursor)\n"
             "  failpack demo                     # full path incl. break/restore\n"
             "  failpack demo --no-keep\n"
             "  failpack demo --skip-break\n"
@@ -155,6 +158,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  pip install failpack\n"
             "  failpack demo --fast\n"
             "  failpack demo --claude-hermetic\n"
+            "  failpack demo --cursor-hermetic\n"
             '  (git fallback: pip install "git+https://github.com/JiangSkirk/failpack.git")\n'
             "Bundled fixtures ship in the wheel (no clone needed).\n"
         ),
@@ -165,7 +169,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Demo pack id (default: demo-five-minute; "
-            "claude-hermetic with --claude-hermetic)"
+            "claude-hermetic / cursor-hermetic with the matching flag)"
         ),
     )
     p_demo.add_argument(
@@ -183,12 +187,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="~60s stranger path: capture → promote → replay only (implies --skip-break)",
     )
-    p_demo.add_argument(
+    hermetic = p_demo.add_mutually_exclusive_group()
+    hermetic.add_argument(
         "--claude-hermetic",
         action="store_true",
         help=(
             "Prove capture --claude-latest with a fake HOME + bundled fixture "
             "(no live Claude install; works after pip install)"
+        ),
+    )
+    hermetic.add_argument(
+        "--cursor-hermetic",
+        action="store_true",
+        help=(
+            "Prove capture --cursor-latest with a fake HOME + bundled fixture "
+            "(no live Cursor install; works after pip install)"
         ),
     )
     p_demo.set_defaults(func=_handle_demo)
@@ -332,6 +345,7 @@ def build_parser() -> argparse.ArgumentParser:
             "under ~/.claude/projects. On success it prints the session path +\n"
             "Next: promote --suggest. No sessions yet? Prove it hermetically:\n"
             "  failpack demo --claude-hermetic  (fake HOME + bundled fixture)\n"
+            "  failpack demo --cursor-hermetic  (Cursor agent path)\n"
             "  or: failpack demo --fast\n"
             "--cursor-latest finds the newest agent transcript under\n"
             "~/.cursor/projects/*/agent-transcripts (best-effort).\n"
@@ -763,11 +777,12 @@ def _handle_doctor(args: argparse.Namespace) -> int:
 def _handle_demo(args: argparse.Namespace) -> int:
     report = cmd_demo(
         root=args.root,
-        pack_id=args.pack_id,  # None → demo-five-minute or claude-hermetic
+        pack_id=args.pack_id,  # None → demo-five-minute / claude-hermetic / cursor-hermetic
         keep=not args.no_keep,
         skip_break=args.skip_break,
         fast=bool(getattr(args, "fast", False)),
         claude_hermetic=bool(getattr(args, "claude_hermetic", False)),
+        cursor_hermetic=bool(getattr(args, "cursor_hermetic", False)),
     )
     print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1
