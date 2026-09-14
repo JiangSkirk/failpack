@@ -74,7 +74,7 @@ Checkout via merchant of record (**Creem** or **Paddle**). We pick the MoR that 
 
 ```bash
 pip install "git+https://github.com/JiangSkirk/failpack.git"
-failpack demo
+failpack demo --fast
 # then: failpack init / capture / promote / replay as needed
 ```
 
