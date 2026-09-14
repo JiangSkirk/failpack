@@ -5,6 +5,34 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-09-14
+
+### Added
+
+- **`failpack show <id>`** — pretty inspect one pack (status, exit, promoted_at,
+  assertion summary, artifact list). Supports `--json`.
+- New assertion kinds (documented + tested; older packs unchanged):
+  - **`tool_denied_contains`** — transcript/tool events mention a denied tool name
+    substring
+  - **`bash_output_contains`** — last/any Bash tool output contains a string
+    (`match: any|last`)
+- Fourth golden pack: **`demo-tool-denied`** (fixture-based; uses the new asserts).
+- Action docs: [`.github/actions/failpack-replay/README.md`](.github/actions/failpack-replay/README.md)
+  with inputs / exit-code signal / examples.
+- `failpack init` workspace tip README points to `failpack demo` and
+  `capture --claude-latest`.
+- README CI status badge.
+
+### Changed
+
+- Version bump to **0.7.0**.
+- `examples/five-minute-demo.sh` expects **0.7.x** (still works; prefer `failpack demo`).
+
+### Notes
+
+- Zero coupling to Echo / Orin / titan-agent (or any live agent install).
+- No monetization in this release — open CLI stays the product.
+
 ## [0.6.0] — 2026-09-14
 
 ### Added
@@ -91,6 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Demo golden pack `demo-missing-import`.
 - Fixture-based Claude-Code-like JSONL parsing.
 
+[0.7.0]: https://github.com/JiangSkirk/failpack/releases/tag/v0.7.0
 [0.6.0]: https://github.com/JiangSkirk/failpack/releases/tag/v0.6.0
 [0.5.0]: https://github.com/JiangSkirk/failpack/releases/tag/v0.5.0
 [0.4.0]: https://github.com/JiangSkirk/failpack/releases/tag/v0.4.0

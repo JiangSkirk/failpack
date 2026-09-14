@@ -1,5 +1,7 @@
 # FailPack
 
+[![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
+
 **FailPack** turns a coding-agent **failure session** into a **golden CI regression pack**.
 
 Capture a bad agent run once → promote it to golden → replay the assertions in CI so the same failure class cannot quietly regress.
@@ -40,7 +42,7 @@ pip install -e ".[dev]"
 Then confirm:
 
 ```bash
-failpack --version   # → failpack 0.6.0
+failpack --version   # → failpack 0.7.0
 failpack doctor
 ```
 
@@ -48,15 +50,16 @@ failpack doctor
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
-## What you get (v0.6)
+## What you get (v0.7)
 
 | Command | What it does |
 |---|---|
 | `failpack demo` | **One-command wow:** capture → promote → replay (+ intentional break) |
-| `failpack init` | Create `.failpack/` layout |
+| `failpack init` | Create `.failpack/` layout (tip README → `demo` / `--claude-latest`) |
 | `failpack init --ci` | Also write a starter workflow that uses the composite action |
 | `failpack doctor` | Check env + Claude projects + workspace; print actionable fixes |
 | `failpack list` | Clean aligned table of packs (id, status, exit, promoted_at) |
+| `failpack show <id>` | **Pretty inspect** status, exit, asserts, artifacts (`--json`) |
 | `failpack status <id>` | Show meta + assertion summary for one pack |
 | `failpack capture --claude-latest` | **Magic path:** newest Claude Code session under `~/.claude/projects` |
 | `failpack capture <transcript.jsonl\|dir>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
@@ -78,6 +81,7 @@ Shipped golden packs:
 - **`demo-missing-import`** — agent forgot an import; tests fail with `NameError`
 - **`demo-wrong-test-cmd`** — agent ran pytest on a missing file (`exit_code=4`)
 - **`demo-permission-denied`** — agent wrote to `/etc/…` and hit `PermissionError` (`exit_code=13`)
+- **`demo-tool-denied`** — Bash network install denied by policy (`exit_code=126`; uses `tool_denied_contains` + `bash_output_contains`)
 
 ## Quickstart
 
@@ -87,6 +91,7 @@ pip install -e ".[dev]"
 failpack doctor
 failpack demo                         # or: ./examples/five-minute-demo.sh
 failpack list
+failpack show demo-tool-denied        # pretty inspect (+ --json)
 failpack replay --all                 # exits 0 when all golden packs pass
 failpack status demo-missing-import
 failpack migrate                      # already current → polite no-op
@@ -178,7 +183,8 @@ Or use the composite action with one line:
 ```
 
 Full example: [`examples/other-repo-ci.yml`](examples/other-repo-ci.yml).  
-Action source: [`.github/actions/failpack-replay`](.github/actions/failpack-replay).
+Action source + docs: [`.github/actions/failpack-replay`](.github/actions/failpack-replay)
+([README](.github/actions/failpack-replay/README.md) covers inputs / exit codes / examples).
 
 This repo's workflow dogfoods the same action (see [`.github/workflows/failpack-replay.yml`](.github/workflows/failpack-replay.yml)).
 
@@ -201,8 +207,24 @@ Assertions cover:
 - **expected substrings** (e.g. the distinctive error line)
 - **optional `min_events`** — fail if the session is shorter than expected
 - **optional `glob_fingerprint`** — combined hash of `artifacts/files/**` (when files were written)
+- **optional `tool_denied_contains`** — denied tool name substring in transcript/tool events
+- **optional `bash_output_contains`** — Bash tool output contains string (`match: any` or `last`)
 
-Older packs without `min_events` / `glob_fingerprint` / `schema_version` still replay; `failpack migrate` stamps the schema field.
+Older packs without `min_events` / `glob_fingerprint` / transcript asserts / `schema_version`
+still replay; `failpack migrate` stamps the schema field.
+
+### Transcript assertion examples
+
+```yaml
+tool_denied_contains:
+  - contains: Bash          # a denied tool_use name contains this substring
+
+bash_output_contains:
+  - contains: "Permission denied"
+    match: any              # default: any Bash tool_result
+  - contains: "exit_code=126"
+    match: last             # only the last Bash tool_result
+```
 
 ## Why not Stet / AgentClash?
 

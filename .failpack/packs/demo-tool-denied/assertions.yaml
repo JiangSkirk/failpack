@@ -1,0 +1,27 @@
+version: 1
+pack_id: demo-tool-denied
+description: Golden assertions for a tool-denied session. Uses tool_denied_contains
+  + bash_output_contains on transcript events.
+exit_code: 126
+fingerprints:
+- path: artifacts/digest.json
+  sha256: 146729bc39683a6e656933232ca61da60e4c975f14142c2d21c6408443deda99
+- path: artifacts/exit_code.txt
+  sha256: 703d2c10fa601276a4dd96193faed68902a642a44eb5b01b40d6fc8499e12822
+- path: artifacts/status.txt
+  sha256: 6da5b18878e110928643ebcc38dbb7552cf3a296eea56493e23edc2b93eecff8
+- path: artifacts/error.txt
+  sha256: 565d94b302a268008a51b28f16e3369624b5afc2dd91dcd5a7738f794a2c71b8
+- path: artifacts/summary.md
+  sha256: 52e77cfced445ddcb7d841465aaddb5fb327487f9bc29b2f90d748a05ec9867e
+substrings:
+- path: artifacts/error.txt
+  contains: 'Tool use denied: Bash'
+min_events: 8
+tool_denied_contains:
+- contains: Bash
+bash_output_contains:
+- contains: 'Tool use denied: Bash'
+  match: last
+- contains: pyproject.toml
+  match: any
