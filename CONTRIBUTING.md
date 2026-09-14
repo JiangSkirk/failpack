@@ -15,7 +15,7 @@ Requires Python **3.11+**.
 
 ```bash
 pip install -e ".[dev]"
-failpack --version   # → failpack 1.5.9
+failpack --version   # → failpack 1.5.10
 failpack doctor --score
 failpack demo --fast         # ~60s stranger wow path (recommended)
 failpack demo --claude-hermetic  # prove --claude-latest without Claude

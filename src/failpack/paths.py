@@ -13,12 +13,27 @@ ASSERTIONS_NAME = "assertions.yaml"
 
 
 def find_root(start: Path | None = None) -> Path:
-    """Walk up from start (or cwd) looking for .failpack/; else use cwd."""
+    """Walk up from start (or cwd) looking for .failpack/; else use cwd.
+
+    Used by capture/demo/list/etc. so nested workdirs still find the pack
+    workspace. Doctor does **not** use this — see ``doctor_root``.
+    """
     cur = (start or Path.cwd()).resolve()
     for candidate in [cur, *cur.parents]:
         if (candidate / FAILPACK_DIR).is_dir():
             return candidate
     return cur
+
+
+def doctor_root(root: Path | None = None) -> Path:
+    """Project root for ``failpack doctor`` — cwd or explicit ``--root`` only.
+
+    Does **not** climb to ancestor ``.failpack/`` directories. Empty stranger
+    directories (and accept scripts under nested paths) report NEEDS SETUP instead
+    of silently inheriting a parent pack score. Pass ``--root`` to target
+    another project; other commands still climb via ``find_root``.
+    """
+    return (root or Path.cwd()).resolve()
 
 
 def failpack_dir(root: Path | None = None) -> Path:

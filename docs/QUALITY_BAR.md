@@ -3,7 +3,7 @@
 Internal checklist. Not marketing copy. Honest gaps between “works for a
 curious stranger on GitHub” and “comfortable asking someone to pay.”
 
-Status as of **1.5.9**: product loop is real (`demo --fast` → capture →
+Status as of **1.5.10**: product loop is real (`demo --fast` → capture →
 promote → replay → CI Action). **Hermetic Claude + Cursor one-shots** are
 pip-first: `failpack demo --claude-hermetic` / `failpack demo --cursor-hermetic`
 (bundled fixtures; no clone / no live agent). Support path is stated. **PyPI

@@ -478,18 +478,82 @@ def test_cli_doctor_strict_fails_without_layout(
     assert "failpack demo --fast" in out
 
 
-def test_cli_doctor_default_exit_zero_without_layout(
+def test_cli_doctor_needs_setup_exits_nonzero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """NEEDS SETUP is machineable: exit 1 (not only stdout RESULT)."""
+    root = tmp_path / "bare"
+    root.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(root), "doctor"])
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "RESULT: NEEDS SETUP" in out
+    assert "next:" in out
+    assert "failpack demo --fast" in out
+
+
+def test_cli_doctor_score_needs_setup_exits_nonzero(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     root = tmp_path / "bare"
     root.mkdir()
     with pytest.raises(SystemExit) as exc:
-        main(["--root", str(root), "doctor"])
-    assert exc.value.code == 0
+        main(["--root", str(root), "doctor", "--score"])
+    assert exc.value.code == 1
     out = capsys.readouterr().out
     assert "RESULT: NEEDS SETUP" in out
-    assert "next:" in out
-    assert "failpack demo --fast" in out
+    assert "READINESS SCORE:" in out
+
+
+def test_doctor_empty_cwd_does_not_inherit_ancestor_failpack(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Stranger/accept friction: nested empty cwd must not score parent packs."""
+    ancestor = tmp_path / "workspace"
+    (ancestor / ".failpack" / "packs").mkdir(parents=True)
+    # Plant a golden-looking layout so climb would falsely look "set up".
+    golden = ancestor / ".failpack" / "packs" / "ancestor-golden"
+    (golden / "artifacts").mkdir(parents=True)
+    (golden / "meta.json").write_text(
+        '{"id":"ancestor-golden","status":"golden","exit_code":1}\n',
+        encoding="utf-8",
+    )
+    empty = ancestor / "foo" / "empty-doctor"
+    empty.mkdir(parents=True)
+    monkeypatch.chdir(empty)
+    empty_home = tmp_path / "no-agents"
+    empty_home.mkdir()
+    report = cmd_doctor(None, home=empty_home, score=True)
+    assert not report.ok
+    text = "\n".join(report.summary_lines(with_score=True))
+    assert "RESULT: NEEDS SETUP" in text
+    assert report.score is not None
+    assert report.score <= 25  # python only; no inherited packs_dir/goldens
+    by_name = {c.name: c for c in report.checklist}
+    assert by_name["packs_dir"].points == 0
+    assert by_name["golden_count"].points == 0
+    layout = next(c for c in report.checks if c.name == "layout")
+    assert not layout.ok
+    assert str(empty.resolve()) in layout.detail or "no .failpack" in layout.detail
+
+
+def test_cli_doctor_empty_cwd_no_ancestor_exit_one(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ancestor = tmp_path / "workspace"
+    (ancestor / ".failpack" / "packs").mkdir(parents=True)
+    empty = ancestor / "foo" / "empty-doctor"
+    empty.mkdir(parents=True)
+    monkeypatch.chdir(empty)
+    with pytest.raises(SystemExit) as exc:
+        main(["doctor", "--score"])
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "RESULT: NEEDS SETUP" in out
+    assert "READINESS SCORE:" in out
 
 
 def test_doctor_missing_layout(tmp_path: Path) -> None:
@@ -573,7 +637,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_3_0() -> None:
-    assert __version__ == "1.5.9"
+    assert __version__ == "1.5.10"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -1224,6 +1288,7 @@ def test_examples_docs_exist() -> None:
     assert "demo --cursor-hermetic" in walk_body
     assert "cursor-projects" in walk_body
     assert "~/.local/bin" in walk_body
+    assert "RELEASE_NOTES_1.5.10" in walk_body or "v1.5.10" in walk_body
     assert "RELEASE_NOTES_1.5.9" in walk_body or "v1.5.9" in walk_body
     assert "RELEASE_NOTES_1.5.8" in walk_body or "v1.5.8" in walk_body
     assert "RELEASE_NOTES_1.5.7" in walk_body or "v1.5.7" in walk_body
@@ -1238,9 +1303,9 @@ def test_examples_docs_exist() -> None:
     assert "failpack rm" in walk_body and "--force" in walk_body
     assert "rm -rf" not in walk_body
     assert "SUPPORT.md" in walk_body
-    assert "1.5.9" in walk_body
+    assert "1.5.10" in walk_body
     contributing = (REPO / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert "1.5.9" in contributing
+    assert "1.5.10" in contributing
     assert "claude-latest-hermetic" in contributing
     assert "cursor-latest-hermetic" in contributing or "demo --cursor-hermetic" in contributing
     assert "8725598a@gmail.com" in contributing
@@ -1251,10 +1316,13 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.5.10" in changelog
     assert "1.5.9" in changelog
     assert "1.5.8" in changelog
     assert "1.5.7" in changelog
     assert "cursor-hermetic" in changelog or "Hermetic Cursor" in changelog or "demo --cursor-hermetic" in changelog
+    assert "NEEDS SETUP" in changelog
+    assert "ancestor" in changelog.lower() or "doctor_root" in changelog or "cwd" in changelog.lower()
     assert "1.5.6" in changelog
     assert "claude-latest-hermetic" in changelog or "Hermetic Claude" in changelog
     assert "pages.yml" in changelog or "GitHub Pages" in changelog
@@ -1652,12 +1720,12 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
-    assert "1.5.9" in text
+    assert "1.5.10" in text
     assert "claude-latest-hermetic" in text
     assert "demo --claude-hermetic" in text
     assert "demo --cursor-hermetic" in text
     assert "cursor-latest-hermetic" in text
-    assert "1.5.8" in text or "1.5.6" in text or "1.5.5" in text or "1.5.4" in text or "1.5.3" in text or "1.5.2" in text or "1.5.1" in text or "1.5.0" in text
+    assert "1.5.9" in text or "1.5.8" in text or "1.5.6" in text or "1.5.5" in text or "1.5.4" in text or "1.5.3" in text or "1.5.2" in text or "1.5.1" in text or "1.5.0" in text
     assert "1.5.0" in text
     assert "1.4.0" in text
     assert "1.3.0" in text
@@ -1709,7 +1777,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "real-user" in quality.lower() or "real user" in quality.lower()
     assert "SUPPORT.md" in quality or "Support path" in quality
     assert "Done" in quality or "✅" in quality
-    assert "1.5.9" in quality
+    assert "1.5.10" in quality
     assert "Hermetic Claude" in quality or "hermetic" in quality.lower()
     assert "claude-latest-hermetic" in quality
     assert "demo --claude-hermetic" in quality
@@ -1744,7 +1812,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "pip install failpack" in site
     assert 'git+https://github.com/JiangSkirk/failpack.git' in site
     assert "when published" not in site.lower()
-    assert "1.5.9" in site
+    assert "1.5.10" in site
     assert "Checkout (placeholder)" in site or "checkout" in site.lower()
     assert "coming soon" in site.lower()
     assert "privacy.html" in site
@@ -1757,6 +1825,19 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "upload-pages-artifact" in pages_wf
     assert "deploy-pages" in pages_wf
     assert "github-pages" in pages_wf
+    assert (REPO / "RELEASE_NOTES_1.5.10.md").is_file()
+    notes1510 = (REPO / "RELEASE_NOTES_1.5.10.md").read_text(encoding="utf-8")
+    assert "1.5.10" in notes1510
+    assert "@v1.5.0" in notes1510
+    assert "NEEDS SETUP" in notes1510
+    assert "ancestor" in notes1510.lower() or "cwd" in notes1510.lower()
+    assert "jiangskirk.github.io/failpack" in notes1510
+    assert "demo --fast" in notes1510
+    assert "pip install failpack" in notes1510
+    assert "when published" not in notes1510.lower()
+    assert "do **not** claim" in notes1510.lower() or "do not claim" in notes1510.lower() or "404" in notes1510
+    assert "PyPI" in notes1510
+    assert "Do not re-upload" in notes1510 or "No PyPI" in notes1510 or "no PyPI" in notes1510.lower()
     assert (REPO / "RELEASE_NOTES_1.5.9.md").is_file()
     notes159 = (REPO / "RELEASE_NOTES_1.5.9.md").read_text(encoding="utf-8")
     assert "1.5.9" in notes159

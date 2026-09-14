@@ -8,7 +8,7 @@ from pathlib import Path
 
 from failpack.commands_capture import claude_projects_dir, cursor_projects_dir
 from failpack.commands_list import list_packs
-from failpack.paths import FAILPACK_DIR, PACKS_DIR, failpack_dir, find_root
+from failpack.paths import FAILPACK_DIR, PACKS_DIR, doctor_root, failpack_dir
 
 
 MIN_PYTHON = (3, 11)
@@ -58,10 +58,18 @@ class DoctorReport:
 
     def summary_lines(self, *, with_score: bool = False) -> list[str]:
         lines = ["failpack doctor"]
+        # After demos leave score ≥90, soft agent tips should not dominate as
+        # "you must set up Claude/Cursor" — fixtures + demo already prove the loop.
+        mute_soft_agent_tips = (
+            with_score and self.score is not None and self.score >= 90
+        )
+        soft_agent = {"claude-projects", "cursor-projects"}
         for c in self.checks:
             mark = "OK" if c.ok else "FAIL"
             lines.append(f"  [{mark}] {c.name}: {c.detail}")
             if c.fix:
+                if mute_soft_agent_tips and c.ok and c.name in soft_agent:
+                    continue
                 label = "fix" if not c.ok else "tip"
                 lines.append(f"         {label}: {c.fix}")
 
@@ -218,7 +226,7 @@ def _check_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
 
 def _check_layout(root: Path | None) -> list[DoctorCheck]:
     checks: list[DoctorCheck] = []
-    project = find_root(root) if root is None else root.resolve()
+    project = doctor_root(root)
     base = failpack_dir(project)
 
     if not base.is_dir():
@@ -298,7 +306,7 @@ def _score_python(check: DoctorCheck) -> DoctorCheck:
 
 def _score_packs_dir(root: Path | None) -> DoctorCheck:
     w = SCORE_WEIGHTS["packs_dir"]
-    project = find_root(root) if root is None else root.resolve()
+    project = doctor_root(root)
     packs = failpack_dir(project) / PACKS_DIR
     if packs.is_dir():
         return DoctorCheck(
@@ -389,7 +397,7 @@ def _score_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
 
 def _score_lint(root: Path | None) -> DoctorCheck:
     w = SCORE_WEIGHTS["lint"]
-    project = find_root(root) if root is None else root.resolve()
+    project = doctor_root(root)
     packs = failpack_dir(project) / PACKS_DIR
     if not packs.is_dir():
         return DoctorCheck(
@@ -425,7 +433,7 @@ def _score_lint(root: Path | None) -> DoctorCheck:
 
 def _score_golden_count(root: Path | None) -> DoctorCheck:
     w = SCORE_WEIGHTS["golden_count"]
-    project = find_root(root) if root is None else root.resolve()
+    project = doctor_root(root)
     packs = failpack_dir(project) / PACKS_DIR
     if not packs.is_dir():
         return DoctorCheck(

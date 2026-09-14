@@ -5,6 +5,38 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.10] — 2026-09-14
+
+### Changed
+
+- **Doctor project root** — `failpack doctor` scores **cwd** (or explicit
+  `--root`) only. It no longer walks to ancestor `.failpack/` directories, so
+  empty nested dirs report **NEEDS SETUP** instead of inheriting a parent pack
+  score. Capture / demo / list still climb via `find_root`.
+- **Doctor exit codes** — `RESULT: OK` → exit **0**; `NEEDS SETUP` / `FAIL` →
+  exit **1**. `--score` text unchanged. `--strict` kept as a compatibility
+  alias (same exit rules).
+- When readiness score is **≥90**, soft Claude/Cursor setup tips are muted so
+  post-demo doctor output does not dominate as “you must set up Cursor”.
+- Version bump to **1.5.10**.
+- Docs / walkthrough / site version samples → **1.5.10**.
+
+### Added
+
+- GitHub Release **`v1.5.10`** + [`RELEASE_NOTES_1.5.10.md`](RELEASE_NOTES_1.5.10.md).
+- Tests covering empty cwd without local `.failpack` (no ancestor inheritance)
+  and NEEDS SETUP → non-zero CLI exit.
+
+### Notes
+
+- Small stranger-friction cut on doctor after 1.5.9’s Cursor hermetic demo.
+  Action pin stays **`@v1.5.0`** (no Action behavior change). **Do not upload
+  to PyPI from this agent.**
+- Zero coupling to Echo / Orin / titan-agent. No live Creem / KYC / pay links.
+  Do **not** claim GitHub Pages is live if it still 404s. Remaining wow gaps:
+  real-user packs, unpaid stranger walkthrough, Pages enable (human Settings
+  flip if still dark).
+
 ## [1.5.9] — 2026-09-14
 
 ### Added
