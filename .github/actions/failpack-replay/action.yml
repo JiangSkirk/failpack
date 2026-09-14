@@ -24,7 +24,7 @@ inputs:
     required: false
     default: ""
   run-doctor:
-    description: Run failpack doctor before replay
+    description: Run failpack doctor --score before replay (advisory; exits 0)
     required: false
     default: "true"
   json:
@@ -63,7 +63,8 @@ runs:
       if: inputs.run-doctor == 'true'
       shell: bash
       working-directory: ${{ inputs.root }}
-      run: failpack doctor
+      # Advisory: doctor exits 0 unless --strict; --score prints readiness 0–100
+      run: failpack doctor --score
 
     - name: Lint packs
       if: inputs.run-lint == 'true'

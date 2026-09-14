@@ -89,8 +89,11 @@ def resolve_transcript_path(
         modes -= 1
     if modes == 0:
         raise ValueError(
-            "Provide a transcript path, --claude-latest, --from-claude-project <path>, "
-            "--stdin, or a glob pattern."
+            "Nothing to capture. Try one of:\n"
+            "  failpack demo\n"
+            "  failpack capture --claude-latest --id my-failure\n"
+            "  failpack capture path/to/session.jsonl --id my-failure\n"
+            "  failpack capture --stdin --id my-failure < session.jsonl"
         )
     if modes > 1:
         raise ValueError(
@@ -183,7 +186,8 @@ def cmd_capture(
         base = failpack_dir(root)
         if not base.is_dir():
             raise FileNotFoundError(
-                f"No {base.name}/ directory. Run `failpack init` first."
+                f"No {base.name}/ directory under the project root. "
+                "Run `failpack init` (or `failpack demo`) first."
             )
 
         pack = base / PACKS_DIR / pid

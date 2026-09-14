@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack demo\n"
-            "  failpack doctor\n"
+            "  failpack doctor --score\n"
             "  failpack capture --claude-latest --id my-failure\n"
             "  failpack promote my-failure && failpack replay my-failure\n"
             "  failpack export my-failure -o my-failure.tgz\n"
@@ -57,6 +57,10 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack completion bash\n"
             "  failpack migrate\n"
             "  failpack init --ci\n"
+            "\n"
+            "install (no PyPI required):\n"
+            '  pip install "git+https://github.com/JiangSkirk/failpack.git"\n'
+            "  failpack demo\n"
             "\n"
             "environment:\n"
             "  NO_COLOR      disable ANSI colors\n"
@@ -93,15 +97,29 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_doctor = sub.add_parser(
         "doctor",
-        help="Check Python, PyYAML, Claude projects, .failpack/ layout, packs",
+        help="Check env + workspace; optional --score readiness (0–100)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
             "  failpack doctor\n"
+            "  failpack doctor --score\n"
+            "  failpack doctor --score --strict\n"
             "\n"
-            "Also reports whether ~/.claude/projects exists and how many\n"
-            "session *.jsonl files are present (tips capture --claude-latest).\n"
+            "Checks Python, PyYAML, ~/.claude/projects, .failpack/ layout, packs.\n"
+            "--score adds a 0–100 readiness score + checklist (python, packs_dir,\n"
+            "claude_projects, lint, golden_count).\n"
+            "Exit 0 always unless --strict (then non-zero when RESULT: FAIL).\n"
         ),
+    )
+    p_doctor.add_argument(
+        "--score",
+        action="store_true",
+        help="Print a 0–100 readiness score and checklist",
+    )
+    p_doctor.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero when any doctor check FAILs (default: always exit 0)",
     )
     p_doctor.set_defaults(func=_handle_doctor)
 
@@ -115,7 +133,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack demo --no-keep\n"
             "  failpack demo --skip-break\n"
             "\n"
-            "Zero-setup: pip install failpack && failpack demo\n"
+            'Zero-setup: pip install "git+https://github.com/JiangSkirk/failpack.git"\n'
+            "             && failpack demo\n"
             "Uses a bundled fixture (same path as examples/five-minute-demo.sh).\n"
         ),
     )
@@ -576,9 +595,12 @@ def _handle_init(args: argparse.Namespace) -> int:
 
 
 def _handle_doctor(args: argparse.Namespace) -> int:
-    report = cmd_doctor(args.root)
-    print("\n".join(report.summary_lines()))
-    return 0 if report.ok else 1
+    report = cmd_doctor(args.root, score=args.score)
+    print("\n".join(report.summary_lines(with_score=args.score)))
+    # Stranger-friendly: doctor is advisory by default (exit 0).
+    if args.strict and not report.ok:
+        return 1
+    return 0
 
 
 def _handle_demo(args: argparse.Namespace) -> int:
@@ -790,7 +812,14 @@ def main(argv: list[str] | None = None) -> None:
     try:
         code = args.func(args)
     except (FileNotFoundError, FileExistsError, ValueError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        msg = str(exc)
+        # Multi-line tips (e.g. capture with no args) print cleanly on stderr.
+        if "\n" in msg:
+            print(f"error: {msg.splitlines()[0]}", file=sys.stderr)
+            for line in msg.splitlines()[1:]:
+                print(line, file=sys.stderr)
+        else:
+            print(f"error: {msg}", file=sys.stderr)
         raise SystemExit(2) from exc
     raise SystemExit(code)
 

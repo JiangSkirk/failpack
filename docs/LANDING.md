@@ -73,11 +73,9 @@ Checkout via merchant of record (**Creem** or **Paddle**). We pick the MoR that 
 ## Quickstart
 
 ```bash
-pip install failpack   # or: uv sync && uv run failpack
-failpack init
-failpack capture path/to/transcript.jsonl
-failpack promote <id>
-failpack replay <id>   # exit 0 = green, non-zero = regression
+pip install "git+https://github.com/JiangSkirk/failpack.git"
+failpack demo
+# then: failpack init / capture / promote / replay as needed
 ```
 
 Pro license check (stub today; gates private sync later):

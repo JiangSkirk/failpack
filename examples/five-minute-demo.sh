@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # FailPack 5-minute demo: doctor → capture → promote → replay → break → restore
 #
-# Prefer the built-in command (works after `pip install failpack`):
+# Prefer the built-in command (works after git install):
+#   pip install "git+https://github.com/JiangSkirk/failpack.git"
 #   failpack demo
 #
 # Or run this script from the FailPack repo root:
@@ -17,7 +18,7 @@ cd "$ROOT"
 # Keep output readable in CI / logs
 export NO_COLOR="${NO_COLOR:-1}"
 
-echo "==> 1/8  failpack --version (expect 0.9.x)"
+echo "==> 1/8  failpack --version (expect 1.0.x)"
 failpack --version
 
 echo

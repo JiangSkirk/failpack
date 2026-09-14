@@ -79,6 +79,10 @@ _failpack() {{
       COMPREPLY=( $(compgen -W "--ci" -- "${{cur}}") )
       return 0
       ;;
+    doctor)
+      COMPREPLY=( $(compgen -W "--score --strict --help" -- "${{cur}}") )
+      return 0
+      ;;
     demo)
       COMPREPLY=( $(compgen -W "--id --no-keep --skip-break" -- "${{cur}}") )
       return 0
@@ -189,6 +193,11 @@ _failpack() {{
           ;;
         init)
           _arguments '--ci[write starter workflow]'
+          ;;
+        doctor)
+          _arguments \\
+            '--score[print 0-100 readiness score]' \\
+            '--strict[exit non-zero on FAIL]'
           ;;
         demo)
           _arguments \\

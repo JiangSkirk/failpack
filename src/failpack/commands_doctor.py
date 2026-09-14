@@ -13,6 +13,17 @@ from failpack.paths import FAILPACK_DIR, PACKS_DIR, failpack_dir, find_root
 
 MIN_PYTHON = (3, 11)
 
+# Readiness score weights (sum = 100). Checklist items for ``--score``.
+SCORE_WEIGHTS: dict[str, int] = {
+    "python": 25,
+    "packs_dir": 25,
+    "claude_projects": 10,
+    "lint": 20,
+    "golden_count": 20,
+}
+
+GIT_INSTALL = 'pip install "git+https://github.com/JiangSkirk/failpack.git"'
+
 
 @dataclass
 class DoctorCheck:
@@ -20,17 +31,23 @@ class DoctorCheck:
     ok: bool
     detail: str
     fix: str | None = None
+    # Optional points earned / max for --score checklist rows
+    points: int | None = None
+    max_points: int | None = None
 
 
 @dataclass
 class DoctorReport:
     checks: list[DoctorCheck] = field(default_factory=list)
+    score: int | None = None
+    score_max: int = 100
+    checklist: list[DoctorCheck] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
         return all(c.ok for c in self.checks) and bool(self.checks)
 
-    def summary_lines(self) -> list[str]:
+    def summary_lines(self, *, with_score: bool = False) -> list[str]:
         lines = ["failpack doctor"]
         for c in self.checks:
             mark = "OK" if c.ok else "FAIL"
@@ -38,6 +55,20 @@ class DoctorReport:
             if c.fix:
                 label = "fix" if not c.ok else "tip"
                 lines.append(f"         {label}: {c.fix}")
+
+        if with_score and self.score is not None:
+            lines.append("")
+            lines.append(f"READINESS SCORE: {self.score}/{self.score_max}")
+            lines.append("checklist:")
+            for c in self.checklist:
+                mark = "OK" if c.ok else "—"
+                pts = ""
+                if c.points is not None and c.max_points is not None:
+                    pts = f"  (+{c.points}/{c.max_points})"
+                lines.append(f"  [{mark}] {c.name}: {c.detail}{pts}")
+                if c.fix and not c.ok:
+                    lines.append(f"         fix: {c.fix}")
+
         lines.append("RESULT: " + ("OK" if self.ok else "FAIL"))
         return lines
 
@@ -53,8 +84,10 @@ def _check_python() -> DoctorCheck:
         "python",
         False,
         f"{version_s} (>= {need} required)",
-        fix=f"Install Python {need}+ and reinstall failpack "
-        f"(pip install 'failpack @ git+https://github.com/JiangSkirk/failpack.git').",
+        fix=(
+            f"Install Python {need}+ and reinstall failpack "
+            f'({GIT_INSTALL}).'
+        ),
     )
 
 
@@ -173,10 +206,178 @@ def _check_layout(root: Path | None) -> list[DoctorCheck]:
     return checks
 
 
-def cmd_doctor(root: Path | None = None, *, home: Path | None = None) -> DoctorReport:
+def _score_python(check: DoctorCheck) -> DoctorCheck:
+    w = SCORE_WEIGHTS["python"]
+    pts = w if check.ok else 0
+    return DoctorCheck(
+        "python",
+        check.ok,
+        check.detail,
+        fix=check.fix,
+        points=pts,
+        max_points=w,
+    )
+
+
+def _score_packs_dir(root: Path | None) -> DoctorCheck:
+    w = SCORE_WEIGHTS["packs_dir"]
+    project = find_root(root) if root is None else root.resolve()
+    packs = failpack_dir(project) / PACKS_DIR
+    if packs.is_dir():
+        return DoctorCheck(
+            "packs_dir",
+            True,
+            f"{FAILPACK_DIR}/{PACKS_DIR}/ present",
+            points=w,
+            max_points=w,
+        )
+    return DoctorCheck(
+        "packs_dir",
+        False,
+        f"missing {FAILPACK_DIR}/{PACKS_DIR}/",
+        fix="Run `failpack init` (or `failpack demo`) to create the packs directory.",
+        points=0,
+        max_points=w,
+    )
+
+
+def _score_claude_projects(*, home: Path | None = None) -> DoctorCheck:
+    w = SCORE_WEIGHTS["claude_projects"]
+    projects = claude_projects_dir(home=home)
+    if not projects.is_dir():
+        return DoctorCheck(
+            "claude_projects",
+            False,
+            "not found (optional — fixtures / demo still work)",
+            fix="Install Claude Code, or skip and use: failpack demo",
+            points=0,
+            max_points=w,
+        )
+    sessions = [p for p in projects.rglob("*.jsonl") if p.is_file()]
+    n = len(sessions)
+    if n == 0:
+        # Directory exists but empty — half credit
+        half = w // 2
+        return DoctorCheck(
+            "claude_projects",
+            True,
+            f"found ({projects}) with 0 sessions",
+            fix="After a Claude Code run: failpack capture --claude-latest --id my-failure",
+            points=half,
+            max_points=w,
+        )
+    return DoctorCheck(
+        "claude_projects",
+        True,
+        f"found ({n} session{'s' if n != 1 else ''})",
+        points=w,
+        max_points=w,
+    )
+
+
+def _score_lint(root: Path | None) -> DoctorCheck:
+    w = SCORE_WEIGHTS["lint"]
+    project = find_root(root) if root is None else root.resolve()
+    packs = failpack_dir(project) / PACKS_DIR
+    if not packs.is_dir():
+        return DoctorCheck(
+            "lint",
+            False,
+            "skipped — no packs dir",
+            fix="Run `failpack init`, then `failpack lint`.",
+            points=0,
+            max_points=w,
+        )
+    from failpack.commands_lint import cmd_lint
+
+    report = cmd_lint(None, root=project)
+    if report.ok:
+        n = len(report.checked)
+        return DoctorCheck(
+            "lint",
+            True,
+            f"PASS ({n} pack{'s' if n != 1 else ''} checked)",
+            points=w,
+            max_points=w,
+        )
+    errors = sum(1 for i in report.issues if i.level == "error")
+    return DoctorCheck(
+        "lint",
+        False,
+        f"FAIL ({errors} error(s))",
+        fix="Run `failpack lint` and fix reported pack/assertion issues.",
+        points=0,
+        max_points=w,
+    )
+
+
+def _score_golden_count(root: Path | None) -> DoctorCheck:
+    w = SCORE_WEIGHTS["golden_count"]
+    project = find_root(root) if root is None else root.resolve()
+    packs = failpack_dir(project) / PACKS_DIR
+    if not packs.is_dir():
+        return DoctorCheck(
+            "golden_count",
+            False,
+            "0 golden (no packs dir)",
+            fix="failpack demo   # or: capture → promote a pack",
+            points=0,
+            max_points=w,
+        )
+    rows = list_packs(project)
+    golden = sum(1 for r in rows if r.status == "golden")
+    if golden >= 1:
+        return DoctorCheck(
+            "golden_count",
+            True,
+            f"{golden} golden pack{'s' if golden != 1 else ''}",
+            points=w,
+            max_points=w,
+        )
+    return DoctorCheck(
+        "golden_count",
+        False,
+        "0 golden packs",
+        fix="failpack demo   # or: failpack promote <id> after capture",
+        points=0,
+        max_points=w,
+    )
+
+
+def compute_score(
+    root: Path | None = None,
+    *,
+    home: Path | None = None,
+    python_check: DoctorCheck | None = None,
+) -> tuple[int, list[DoctorCheck]]:
+    """Return (0–100 score, checklist rows) for readiness scoring."""
+    py = python_check or _check_python()
+    checklist = [
+        _score_python(py),
+        _score_packs_dir(root),
+        _score_claude_projects(home=home),
+        _score_lint(root),
+        _score_golden_count(root),
+    ]
+    score = sum(c.points or 0 for c in checklist)
+    return score, checklist
+
+
+def cmd_doctor(
+    root: Path | None = None,
+    *,
+    home: Path | None = None,
+    score: bool = False,
+) -> DoctorReport:
     report = DoctorReport()
     report.checks.append(_check_python())
     report.checks.append(_check_pyyaml())
     report.checks.append(_check_claude_projects(home=home))
     report.checks.extend(_check_layout(root))
+    if score:
+        report.score, report.checklist = compute_score(
+            root,
+            home=home,
+            python_check=report.checks[0],
+        )
     return report
