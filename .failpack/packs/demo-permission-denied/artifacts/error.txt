@@ -1,0 +1,2 @@
+PermissionError: [Errno 13] Permission denied: '/etc/myapp/config.yaml'
+Wrong path write — agent tried to persist secrets under /etc (exit_code=13)

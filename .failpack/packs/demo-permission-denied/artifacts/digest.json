@@ -1,0 +1,9 @@
+{
+  "error_message": "PermissionError: [Errno 13] Permission denied: '/etc/myapp/config.yaml'\nWrong path write — agent tried to persist secrets under /etc (exit_code=13)",
+  "event_count": 8,
+  "exit_code": 13,
+  "status": "failed",
+  "written_files": [
+    "/etc/myapp/config.yaml"
+  ]
+}

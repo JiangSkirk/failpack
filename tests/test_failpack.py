@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import shutil
 import time
 from pathlib import Path
@@ -10,6 +11,9 @@ from pathlib import Path
 import pytest
 import yaml
 
+from failpack import __version__
+from failpack.cli import build_parser, main
+from failpack.color import paint, use_color
 from failpack.commands_capture import cmd_capture, find_newest_jsonl, resolve_transcript_path
 from failpack.commands_doctor import cmd_doctor
 from failpack.commands_init import cmd_init
@@ -22,9 +26,11 @@ from failpack.pack import glob_fingerprint, read_meta, sha256_file
 REPO = Path(__file__).resolve().parents[1]
 FIXTURE = REPO / "fixtures" / "claude-code-failure.jsonl"
 FIXTURE_WRONG_CMD = REPO / "fixtures" / "claude-code-wrong-test-cmd.jsonl"
+FIXTURE_PERM = REPO / "fixtures" / "claude-code-permission-denied.jsonl"
 DEMO_ID = "demo-missing-import"
 DEMO_WRONG_CMD = "demo-wrong-test-cmd"
-GOLDEN_IDS = (DEMO_ID, DEMO_WRONG_CMD)
+DEMO_PERM = "demo-permission-denied"
+GOLDEN_IDS = (DEMO_ID, DEMO_WRONG_CMD, DEMO_PERM)
 
 
 @pytest.fixture
@@ -55,7 +61,16 @@ def test_replay_fails_when_assertion_mutated(workspace: Path) -> None:
 
     report = cmd_replay(DEMO_ID, root=workspace)
     assert not report.ok
-    assert any(not c.ok and c.name.startswith("substring:") for c in report.checks)
+    failed = [c for c in report.checks if not c.ok and c.name.startswith("substring:")]
+    assert failed
+    assert failed[0].expected and "contains" in failed[0].expected
+    assert failed[0].actual == "not found"
+    assert failed[0].hint and "re-promote" in failed[0].hint
+    summary = "\n".join(report.summary_lines(color=False))
+    assert "expected:" in summary
+    assert "actual:" in summary
+    assert "hint:" in summary
+    assert "re-promote after intentional change" in summary
 
 
 def test_replay_fails_when_artifact_mutated(workspace: Path) -> None:
@@ -67,7 +82,14 @@ def test_replay_fails_when_artifact_mutated(workspace: Path) -> None:
 
     report = cmd_replay(DEMO_ID, root=workspace)
     assert not report.ok
-    assert any(not c.ok and "fingerprint:artifacts/error.txt" in c.name for c in report.checks)
+    failed = [c for c in report.checks if not c.ok and "fingerprint:artifacts/error.txt" in c.name]
+    assert failed
+    assert failed[0].expected and failed[0].actual
+    assert failed[0].expected != failed[0].actual
+    assert failed[0].hint and "artifact drifted" in failed[0].hint
+    assert "artifacts/error.txt" in failed[0].hint
+    summary = "\n".join(report.summary_lines(color=False))
+    assert "artifact drifted — inspect artifacts/error.txt" in summary
 
 
 def test_replay_fails_when_exit_code_assertion_breaks(workspace: Path) -> None:
@@ -146,11 +168,13 @@ def test_list_and_status_for_shipped_packs() -> None:
     ids = {r.id for r in rows}
     assert DEMO_ID in ids
     assert DEMO_WRONG_CMD in ids
+    assert DEMO_PERM in ids
     by_id = {r.id: r for r in rows}
     assert by_id[DEMO_ID].status == "golden"
     assert by_id[DEMO_ID].exit_code == 1
     assert by_id[DEMO_ID].promoted_at
     assert by_id[DEMO_WRONG_CMD].exit_code == 4
+    assert by_id[DEMO_PERM].exit_code == 13
 
     status = cmd_status(DEMO_ID, root=REPO)
     lines = "\n".join(status.summary_lines())
@@ -293,7 +317,7 @@ def test_doctor_ok_on_repo() -> None:
     assert "layout" in names
     assert "packs" in names
     packs = next(c for c in report.checks if c.name == "packs")
-    assert "2 pack" in packs.detail
+    assert "3 pack" in packs.detail
     assert "golden" in packs.detail
 
 
@@ -323,7 +347,100 @@ def test_replay_all_shipped_goldens() -> None:
     ids = {r.pack_id for r in report.reports}
     assert DEMO_ID in ids
     assert DEMO_WRONG_CMD in ids
+    assert DEMO_PERM in ids
     assert all(r.ok for r in report.reports)
+
+
+def test_permission_denied_fixture_promotes(workspace: Path) -> None:
+    _capture_and_promote(workspace, FIXTURE_PERM, DEMO_PERM)
+    assertions_path = workspace / ".failpack" / "packs" / DEMO_PERM / "assertions.yaml"
+    data = yaml.safe_load(assertions_path.read_text(encoding="utf-8"))
+    assert data["exit_code"] == 13
+    assert data["min_events"] == 8
+    assert any("Permission denied" in s["contains"] for s in data["substrings"])
+    # Write attempt is recorded under artifacts/files even though the tool errored
+    assert data["glob_fingerprint"]["file_count"] == 1
+    report = cmd_replay(DEMO_PERM, root=workspace)
+    assert report.ok, "\n".join(report.summary_lines())
+
+
+def test_replay_json_roundtrip(workspace: Path) -> None:
+    _capture_and_promote(workspace)
+    report = cmd_replay(DEMO_ID, root=workspace)
+    payload = json.loads(report.to_json())
+    assert payload["pack_id"] == DEMO_ID
+    assert payload["ok"] is True
+    assert payload["checks"]
+    assert all("name" in c and "ok" in c for c in payload["checks"])
+
+    assertions_path = workspace / ".failpack" / "packs" / DEMO_ID / "assertions.yaml"
+    data = yaml.safe_load(assertions_path.read_text(encoding="utf-8"))
+    data["exit_code"] = 0
+    assertions_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    bad = cmd_replay(DEMO_ID, root=workspace)
+    bad_payload = json.loads(bad.to_json())
+    assert bad_payload["ok"] is False
+    exit_check = next(c for c in bad_payload["checks"] if c["name"] == "exit_code")
+    assert exit_check["ok"] is False
+    assert exit_check["expected"] == "0"
+    assert exit_check["actual"] == "1"
+    assert "re-promote" in exit_check["hint"]
+
+
+def test_replay_all_json_includes_packs(workspace: Path) -> None:
+    _capture_and_promote(workspace)
+    report = cmd_replay_all(root=workspace)
+    payload = json.loads(report.to_json())
+    assert payload["ok"] is True
+    assert payload["packs"][0]["pack_id"] == DEMO_ID
+
+
+def test_version_is_0_3_0() -> None:
+    assert __version__ == "0.3.0"
+    parser = build_parser()
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["--version"])
+    assert exc.value.code == 0
+
+
+def test_help_mentions_examples() -> None:
+    parser = build_parser()
+    help_text = parser.format_help()
+    assert "examples:" in help_text
+    assert "NO_COLOR" in help_text
+    replay_help = None
+    for action in parser._subparsers._group_actions:  # noqa: SLF001
+        for name, sub in action.choices.items():
+            if name == "replay":
+                replay_help = sub.format_help()
+    assert replay_help is not None
+    assert "--json" in replay_help
+    assert "examples:" in replay_help
+
+
+def test_no_color_disables_ansi(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    assert use_color() is False
+    assert paint("FAIL", "red") == "FAIL"
+
+
+def test_force_color_enables_ansi(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    assert use_color() is True
+    assert "\033[" in paint("FAIL", "red")
+
+
+def test_cli_replay_json_flag(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _capture_and_promote(workspace)
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "replay", DEMO_ID, "--json"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["ok"] is True
+    assert payload["pack_id"] == DEMO_ID
 
 
 def test_replay_all_skips_non_golden_and_fails_on_broken(workspace: Path) -> None:

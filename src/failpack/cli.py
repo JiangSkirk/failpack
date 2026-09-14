@@ -20,9 +20,23 @@ from failpack.license import cmd_license_check
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="failpack",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         description=(
             "FailPack: turn coding-agent failure sessions "
             "into golden CI regression packs."
+        ),
+        epilog=(
+            "examples:\n"
+            "  failpack doctor\n"
+            "  failpack capture fixtures/claude-code-failure.jsonl --id my-failure\n"
+            "  failpack promote my-failure\n"
+            "  failpack replay my-failure\n"
+            "  failpack replay --all\n"
+            "  failpack replay --all --json\n"
+            "\n"
+            "environment:\n"
+            "  NO_COLOR      disable ANSI colors\n"
+            "  FORCE_COLOR   force ANSI colors even when not a TTY\n"
         ),
     )
     parser.add_argument("--version", action="version", version=f"failpack {__version__}")
@@ -35,19 +49,36 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_init = sub.add_parser("init", help="Create .failpack/ workspace layout")
+    p_init = sub.add_parser(
+        "init",
+        help="Create .failpack/ workspace layout",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="examples:\n  failpack init\n  failpack --root /path/to/project init\n",
+    )
     p_init.set_defaults(func=_handle_init)
 
     p_doctor = sub.add_parser(
         "doctor",
         help="Check Python, PyYAML, .failpack/ layout, and pack counts",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="examples:\n  failpack doctor\n",
     )
     p_doctor.set_defaults(func=_handle_doctor)
 
-    p_list = sub.add_parser("list", help="List packs under .failpack/packs/")
+    p_list = sub.add_parser(
+        "list",
+        help="List packs under .failpack/packs/",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="examples:\n  failpack list\n",
+    )
     p_list.set_defaults(func=_handle_list)
 
-    p_status = sub.add_parser("status", help="Show meta + assertion summary for one pack")
+    p_status = sub.add_parser(
+        "status",
+        help="Show meta + assertion summary for one pack",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="examples:\n  failpack status demo-missing-import\n",
+    )
     p_status.add_argument("pack_id", help="Pack id under .failpack/packs/")
     p_status.set_defaults(func=_handle_status)
 
@@ -100,13 +131,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_cap.set_defaults(func=_handle_capture)
 
-    p_prom = sub.add_parser("promote", help="Mark pack golden and write assertions.yaml")
+    p_prom = sub.add_parser(
+        "promote",
+        help="Mark pack golden and write assertions.yaml",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="examples:\n  failpack promote my-failure\n",
+    )
     p_prom.add_argument("pack_id", help="Pack id under .failpack/packs/")
     p_prom.set_defaults(func=_handle_promote)
 
     p_rep = sub.add_parser(
         "replay",
         help="Verify golden assertions (exit 0 pass / non-zero fail)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack replay demo-missing-import\n"
+            "  failpack replay --all\n"
+            "  failpack replay --all --json\n"
+            "  failpack replay demo-missing-import --json\n"
+            "\n"
+            "On failure, human output prints expected vs actual plus a one-line hint\n"
+            "(e.g. re-promote after intentional change / artifact drifted — inspect path).\n"
+            "Colors are on for TTYs; set NO_COLOR=1 to disable.\n"
+        ),
     )
     p_rep.add_argument(
         "pack_id",
@@ -118,6 +166,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--all",
         action="store_true",
         help="Replay every golden pack; exit non-zero if any fail",
+    )
+    p_rep.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human summary lines",
     )
     p_rep.set_defaults(func=_handle_replay)
 
@@ -183,12 +236,18 @@ def _handle_replay(args: argparse.Namespace) -> int:
         raise ValueError("Use either a pack id or --all, not both.")
     if args.all:
         report = cmd_replay_all(root=args.root)
-        print("\n".join(report.summary_lines()))
+        if args.json:
+            sys.stdout.write(report.to_json())
+        else:
+            print("\n".join(report.summary_lines()))
         return 0 if report.ok else 1
     if not args.pack_id:
         raise ValueError("Provide a pack id, or pass --all to replay every golden pack.")
     report = cmd_replay(args.pack_id, root=args.root)
-    print("\n".join(report.summary_lines()))
+    if args.json:
+        sys.stdout.write(report.to_json())
+    else:
+        print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1
 
 

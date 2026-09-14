@@ -1,0 +1,72 @@
+name: FailPack replay
+description: Install FailPack and replay golden packs (failpack replay --all)
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  root:
+    description: Project root containing .failpack/ (default checkout root)
+    required: false
+    default: "."
+  python-version:
+    description: Python version for setup-python
+    required: false
+    default: "3.12"
+  install-from:
+    description: >
+      How to install FailPack. Use "." for the current repo (editable), or a
+      git URL such as "git+https://github.com/JiangSkirk/failpack.git".
+    required: false
+    default: "git+https://github.com/JiangSkirk/failpack.git"
+  extra-pip-args:
+    description: Extra args passed to pip install (e.g. quotes around extras)
+    required: false
+    default: ""
+  run-doctor:
+    description: Run failpack doctor before replay
+    required: false
+    default: "true"
+  json:
+    description: Emit machine-readable JSON from replay
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install FailPack
+      shell: bash
+      working-directory: ${{ inputs.root }}
+      run: |
+        set -euo pipefail
+        if [[ "${{ inputs.install-from }}" == "." ]]; then
+          pip install ${{ inputs.extra-pip-args }} -e ".[dev]"
+        else
+          pip install ${{ inputs.extra-pip-args }} "${{ inputs.install-from }}"
+        fi
+
+    - name: Doctor
+      if: inputs.run-doctor == 'true'
+      shell: bash
+      working-directory: ${{ inputs.root }}
+      run: failpack doctor
+
+    - name: Replay golden packs
+      shell: bash
+      working-directory: ${{ inputs.root }}
+      env:
+        NO_COLOR: "1"
+      run: |
+        set -euo pipefail
+        failpack list
+        if [[ "${{ inputs.json }}" == "true" ]]; then
+          failpack replay --all --json
+        else
+          failpack replay --all
+        fi

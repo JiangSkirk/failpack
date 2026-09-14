@@ -1,0 +1,26 @@
+version: 1
+pack_id: demo-permission-denied
+description: Golden assertions for this failure session. Replay fails CI if fingerprints
+  or expected signals drift.
+exit_code: 13
+fingerprints:
+- path: artifacts/digest.json
+  sha256: 9c0cd6152c207370c6f259cf29c1f59784155db3c8ad643fa37e14e8c317bd84
+- path: artifacts/exit_code.txt
+  sha256: 1a252402972f6057fa53cc172b52b9ffca698e18311facd0f3b06ecaaef79e17
+- path: artifacts/status.txt
+  sha256: 6da5b18878e110928643ebcc38dbb7552cf3a296eea56493e23edc2b93eecff8
+- path: artifacts/error.txt
+  sha256: b7239efec282a4679c9a5a6b3fea7228cc03b4966e6e2b8e628af28ae16bcc82
+- path: artifacts/summary.md
+  sha256: f59f3ac2e81dd643e7a517c9ab9e9dc101af1598216ec97c3d245cbd83888aab
+- path: artifacts/files/etc/myapp/config.yaml
+  sha256: b5d72d50a88eb42a9b257973455069a5da0bfbac516986cf8bc6ef280dc00af1
+substrings:
+- path: artifacts/error.txt
+  contains: 'PermissionError: [Errno 13] Permission denied: ''/etc/myapp/config.yaml'''
+min_events: 8
+glob_fingerprint:
+  pattern: artifacts/files/**
+  sha256: 0b10faea1e48579f8d2f13ef52783729d2f465208471a7fe70698a37562df993
+  file_count: 1
