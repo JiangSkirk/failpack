@@ -21,7 +21,7 @@ export NO_COLOR="${NO_COLOR:-1}"
 PACK_ID="${1:-claude-hermetic}"
 WORKSPACE="${2:-.}"
 
-echo "==> failpack --version (expect 1.5.8+)"
+echo "==> failpack --version (expect 1.5.9+)"
 failpack --version
 
 echo

@@ -4,7 +4,29 @@ Magic path: discover the newest Cursor agent transcript under
 `~/.cursor/projects/*/agent-transcripts` and ingest it as a FailPack pack.
 
 > **Tests and CI MUST use a fake HOME.** Never point unit tests at a real
-> `~/.cursor` tree. This doc shows the real-machine flow.
+> `~/.cursor` tree. This doc shows the real-machine flow **and** the pip-first
+> hermetic proof.
+
+## Hermetic proof (no live Cursor — preferred first)
+
+After `pip install failpack` (no clone required):
+
+```bash
+failpack demo --cursor-hermetic
+# optional: failpack demo --cursor-hermetic --fast
+```
+
+Checkout alias (thin wrapper):
+
+```bash
+./examples/cursor-latest-hermetic.sh
+```
+
+That seeds a temporary fake HOME with the Composer-era layout
+(`projects/hermetic-demo/agent-transcripts/<uuid>/<uuid>.jsonl`) from the
+shipped fixture, then runs `capture --cursor-latest` →
+`promote --suggest --write` → lint → replay. Clear PASS story. Never touches
+your real `~/.cursor`.
 
 ## What FailPack looks for (best-effort)
 
@@ -24,7 +46,8 @@ Cursor layouts evolve. FailPack searches, in order of preference:
 main session over `subagents/` when mtimes tie).
 
 If `~/.cursor/projects` is missing, or no `*.jsonl` is found, FailPack prints a
-clear **not found** message and points here — it does not invent paths.
+clear **not found** message and tips `failpack demo --cursor-hermetic` — it
+does not invent paths.
 
 ## Prerequisites
 
@@ -32,7 +55,7 @@ clear **not found** message and points here — it does not invent paths.
 pip install failpack
 # or: pip install "git+https://github.com/JiangSkirk/failpack.git"
 # or from a checkout: pip install -e ".[dev]"
-failpack --version    # failpack 1.5.8+
+failpack --version    # failpack 1.5.9+
 failpack doctor --score
 failpack init         # if this repo isn't already initialized
 ```
@@ -75,13 +98,15 @@ RESULT: PASS
 ```bash
 $ failpack capture --cursor-latest --id missing
 error: Cursor projects directory not found: /home/you/.cursor/projects. …
-See examples/cursor-latest-demo.md.
+  • No sessions yet? Prove the path hermetically:
+      failpack demo --cursor-hermetic
 ```
 
 Or when the tree exists but has no transcripts:
 
 ```bash
 error: No Cursor agent *.jsonl transcripts under /home/you/.cursor/projects. …
+  failpack demo --cursor-hermetic
 ```
 
 ## Fake-HOME tip for contributors
@@ -91,15 +116,18 @@ error: No Cursor agent *.jsonl transcripts under /home/you/.cursor/projects. …
 export HOME=/tmp/failpack-fake-home
 SESSION=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
 mkdir -p "$HOME/.cursor/projects/demo/agent-transcripts/$SESSION"
-cp fixtures/claude-code-failure.jsonl \
+cp fixtures/cursor-agent-failure.jsonl \
   "$HOME/.cursor/projects/demo/agent-transcripts/$SESSION/$SESSION.jsonl"
 failpack capture --cursor-latest --id from-fake-home --force
 ```
+
+Or just run `failpack demo --cursor-hermetic` (same idea, first-class CLI).
 
 Claude-compatible JSONL fixtures work for layout tests. Real Cursor exports may
 differ slightly; FailPack is best-effort on format — if parse fails, export a
 Claude-Code-like JSONL or pass an explicit path.
 
 See also: [`claude-latest-demo.md`](claude-latest-demo.md),
+[`cursor-latest-hermetic.sh`](cursor-latest-hermetic.sh),
 [`STRANGER_WALKTHROUGH.md`](STRANGER_WALKTHROUGH.md),
 [`five-minute-demo.sh`](five-minute-demo.sh).

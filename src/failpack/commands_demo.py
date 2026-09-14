@@ -1,4 +1,4 @@
-"""failpack demo — one-command ~60-second wow path + Claude hermetic proof."""
+"""failpack demo — one-command ~60-second wow path + hermetic proofs."""
 
 from __future__ import annotations
 
@@ -26,6 +26,11 @@ CLAUDE_HERMETIC_PACK_ID = "claude-hermetic"
 CLAUDE_HERMETIC_PROJECT = "hermetic-demo"
 CLAUDE_HERMETIC_FIXTURE_RESOURCE = "claude-code-failure.jsonl"
 
+CURSOR_HERMETIC_PACK_ID = "cursor-hermetic"
+CURSOR_HERMETIC_PROJECT = "hermetic-demo"
+CURSOR_HERMETIC_SESSION = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+CURSOR_HERMETIC_FIXTURE_RESOURCE = "cursor-agent-failure.jsonl"
+
 
 @dataclass
 class DemoReport:
@@ -35,6 +40,7 @@ class DemoReport:
     ok: bool = True
     fast: bool = False
     claude_hermetic: bool = False
+    cursor_hermetic: bool = False
 
     def summary_lines(self) -> list[str]:
         return list(self.lines)
@@ -63,6 +69,23 @@ def claude_hermetic_fixture_bytes() -> bytes:
         return repo_fixture.read_bytes()
     ref = resources.files("failpack").joinpath(
         "data", CLAUDE_HERMETIC_FIXTURE_RESOURCE
+    )
+    return ref.read_bytes()
+
+
+def cursor_hermetic_fixture_bytes() -> bytes:
+    """Load the Cursor hermetic fixture (repo fixtures or bundled package data).
+
+    Claude-compatible JSONL (same failure shape used by Cursor layout tests);
+    shipped in the wheel so a pip-installed stranger can prove
+    ``capture --cursor-latest`` without a live Cursor install or git clone.
+    """
+    here = Path(__file__).resolve()
+    repo_fixture = here.parents[2] / "fixtures" / "cursor-agent-failure.jsonl"
+    if repo_fixture.is_file():
+        return repo_fixture.read_bytes()
+    ref = resources.files("failpack").joinpath(
+        "data", CURSOR_HERMETIC_FIXTURE_RESOURCE
     )
     return ref.read_bytes()
 
@@ -121,6 +144,8 @@ def _run_fast_demo(
             report,
             "Next: failpack demo --claude-hermetic  "
             "(prove capture --claude-latest without Claude)  ·  "
+            "failpack demo --cursor-hermetic  "
+            "(prove capture --cursor-latest without Cursor)  ·  "
             "failpack capture --claude-latest --id my-failure  "
             "·  failpack demo   # full path with break/restore",
         )
@@ -228,8 +253,130 @@ def _run_claude_hermetic_demo(
 
         _emit(
             report,
-            "Next: failpack capture --claude-latest --id my-failure  "
+            "Next: failpack demo --cursor-hermetic  "
+            "(prove capture --cursor-latest without Cursor)  ·  "
+            "failpack capture --claude-latest --id my-failure  "
             "(after a real Claude Code failure)  ·  failpack demo --fast",
+        )
+        _emit(report, "RESULT: OK")
+        return report
+
+
+def _run_cursor_hermetic_demo(
+    report: DemoReport,
+    *,
+    project: Path,
+    pack_id: str,
+    keep: bool,
+) -> DemoReport:
+    """Prove capture --cursor-latest without a live Cursor install or clone.
+
+    Creates a temporary fake HOME, seeds the Composer-era layout
+    ``~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl`` from
+    the bundled fixture, then runs capture → promote --suggest --write → lint
+    → replay. Never points at a real ``~/.cursor`` tree. Discovery uses an
+    explicit ``home=`` (process HOME is not mutated).
+    """
+    with tempfile.TemporaryDirectory(prefix="failpack-cursor-hermetic-") as tmp:
+        fake_home = Path(tmp)
+        session_dir = (
+            fake_home
+            / ".cursor"
+            / "projects"
+            / CURSOR_HERMETIC_PROJECT
+            / "agent-transcripts"
+            / CURSOR_HERMETIC_SESSION
+        )
+        session_dir.mkdir(parents=True)
+        session = session_dir / f"{CURSOR_HERMETIC_SESSION}.jsonl"
+        session.write_bytes(cursor_hermetic_fixture_bytes())
+
+        _emit(
+            report,
+            f"failpack demo --cursor-hermetic  ·  failpack {__version__}",
+        )
+        _emit(report, "")
+        _emit(
+            report,
+            f"==> 1/4  seed fake HOME + capture --cursor-latest → '{pack_id}'",
+        )
+        _emit(
+            report,
+            "    layout: ~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl",
+        )
+        _emit(
+            report,
+            "    fixture → ~/.cursor/projects/"
+            f"{CURSOR_HERMETIC_PROJECT}/agent-transcripts/"
+            f"{CURSOR_HERMETIC_SESSION}/{CURSOR_HERMETIC_SESSION}.jsonl",
+        )
+        _emit(
+            report,
+            f"    HOME={fake_home} (temporary; not your real ~/.cursor)",
+        )
+        pack = cmd_capture(
+            None,
+            pack_id=pack_id,
+            root=project,
+            force=True,
+            cursor_latest=True,
+            home=fake_home,
+        )
+        _emit(report, f"Captured pack '{pack.name}' → {pack}")
+
+        _emit(report, "")
+        _emit(report, "==> 2/4  promote --suggest --write → golden")
+        cmd_promote(pack_id, root=project, suggest=True, write=True)
+        _emit(report, f"Promoted pack '{pack_id}' to golden (suggest --write)")
+
+        _emit(report, "")
+        _emit(report, f"==> 3/4  lint '{pack_id}'")
+        lint = cmd_lint(pack_id, root=project)
+        lint_result = [ln for ln in lint.summary_lines() if ln.startswith("RESULT:")]
+        if lint_result:
+            report.lines.extend(lint_result)
+        else:
+            report.lines.extend(lint.summary_lines())
+        if not lint.ok:
+            report.ok = False
+            _emit(report, "RESULT: FAIL (expected PASS on lint)")
+            return report
+
+        _emit(report, "")
+        _emit(report, "==> 4/4  replay — should PASS")
+        replay_ok = cmd_replay(pack_id, root=project)
+        result_lines = [ln for ln in replay_ok.summary_lines() if ln.startswith("RESULT:")]
+        if result_lines:
+            report.lines.extend(result_lines)
+        else:
+            report.lines.extend(replay_ok.summary_lines())
+        if not replay_ok.ok:
+            report.ok = False
+            _emit(report, "RESULT: FAIL (expected PASS on clean replay)")
+            return report
+
+        _emit(report, "")
+        _emit(
+            report,
+            "PASS: hermetic Cursor one-shot proved "
+            "(capture --cursor-latest without a live Cursor install).",
+        )
+        if keep:
+            _emit(
+                report,
+                f"Done. Hermetic pack left at {pack} (status=golden).",
+            )
+            _emit(report, f"Clean up with:  failpack rm {pack_id} --force")
+        else:
+            shutil.rmtree(pack)
+            report.pack_dir = pack
+            _emit(report, "Done. Hermetic pack removed (--no-keep).")
+
+        _emit(
+            report,
+            "Next: failpack capture --cursor-latest --id cursor-fail  "
+            "(after a real Cursor agent failure)  ·  "
+            "failpack demo --claude-hermetic  ·  failpack demo --fast",
         )
         _emit(report, "RESULT: OK")
         return report
@@ -243,6 +390,7 @@ def cmd_demo(
     skip_break: bool = False,
     fast: bool = False,
     claude_hermetic: bool = False,
+    cursor_hermetic: bool = False,
 ) -> DemoReport:
     """Run the built-in capture → promote → replay (+ intentional break) path.
 
@@ -252,13 +400,21 @@ def cmd_demo(
 
     ``claude_hermetic=True`` proves ``capture --claude-latest`` with a fake
     HOME + bundled fixture (no live Claude, no git clone required after pip
-    install). ``--fast`` is accepted alongside hermetic (same compact path).
+    install). ``cursor_hermetic=True`` does the same for
+    ``capture --cursor-latest``. ``--fast`` is accepted alongside hermetic
+    (same compact path). Hermetic modes are mutually exclusive.
 
     Mirrors README::
 
         pip install failpack && failpack demo --fast
         failpack demo --claude-hermetic
+        failpack demo --cursor-hermetic
     """
+    if claude_hermetic and cursor_hermetic:
+        raise ValueError(
+            "Use only one of: --claude-hermetic or --cursor-hermetic."
+        )
+
     project = find_root(root) if root is None else root.resolve()
     if not packs_dir(project).is_dir():
         cmd_init(project)
@@ -272,6 +428,18 @@ def cmd_demo(
             claude_hermetic=True,
         )
         return _run_claude_hermetic_demo(
+            report, project=project, pack_id=resolved_id, keep=keep
+        )
+
+    if cursor_hermetic:
+        resolved_id = pack_id or CURSOR_HERMETIC_PACK_ID
+        report = DemoReport(
+            pack_id=resolved_id,
+            pack_dir=packs_dir(project) / resolved_id,
+            fast=True,
+            cursor_hermetic=True,
+        )
+        return _run_cursor_hermetic_demo(
             report, project=project, pack_id=resolved_id, keep=keep
         )
 
@@ -377,6 +545,7 @@ def cmd_demo(
             report,
             "Tip: failpack demo --fast  for the ~60s stranger path; "
             "failpack demo --claude-hermetic  to prove capture --claude-latest; "
+            "failpack demo --cursor-hermetic  to prove capture --cursor-latest; "
             "failpack capture --claude-latest --id my-failure  for a real session.",
         )
         _emit(report, "RESULT: OK")

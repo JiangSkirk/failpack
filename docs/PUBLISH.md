@@ -8,6 +8,7 @@ should install with:
 pip install failpack
 failpack demo --fast
 failpack demo --claude-hermetic
+failpack demo --cursor-hermetic
 ```
 
 Git fallback (optional):
@@ -23,7 +24,7 @@ environment.** Do not re-upload an already-published version.
 ## Prerequisites
 
 - Python **3.11+**
-- A clean checkout on the release tag (e.g. `v1.5.8`)
+- A clean checkout on the release tag (e.g. `v1.5.9`)
 - Build tools:
 
 ```bash
@@ -34,7 +35,7 @@ python -m pip install -U build twine
 
 ```bash
 grep -E '^version|^__version__' pyproject.toml src/failpack/__init__.py
-# both should match the release (e.g. 1.5.8)
+# both should match the release (e.g. 1.5.9)
 
 failpack --version   # after editable install
 ```

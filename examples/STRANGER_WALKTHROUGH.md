@@ -1,8 +1,8 @@
 # Stranger walkthrough — FailPack from zero (~60s)
 
 Copy-paste terminal session a new user would see: `pip install failpack` →
-`failpack demo --fast` → `failpack demo --claude-hermetic` → optional real
-Claude one-shot. No Echo / Orin / titan-agent. Git install is fallback only.
+`failpack demo --fast` → hermetic Claude / Cursor demos → optional real
+one-shot. No Echo / Orin / titan-agent. Git install is fallback only.
 
 Assumes Python **3.11+** and a clean shell (empty project dir — not the FailPack
 repo checkout). Target: **about a minute** to first PASS after install.
@@ -13,10 +13,10 @@ repo checkout). Target: **about a minute** to first PASS after install.
 $ pip install failpack
 Collecting failpack
   …
-Successfully installed failpack-1.5.8 …
+Successfully installed failpack-1.5.9 …
 
 $ failpack --version
-failpack 1.5.8
+failpack 1.5.9
 ```
 
 Git fallback (optional):
@@ -32,7 +32,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.5.8
+failpack 1.5.9
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -45,7 +45,7 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --fast
-failpack demo --fast  (~60s wow)  ·  failpack 1.5.8
+failpack demo --fast  (~60s wow)  ·  failpack 1.5.9
 
 ==> 1/3  capture bundled fixture → 'demo-five-minute'
 Captured pack 'demo-five-minute' → …/.failpack/packs/demo-five-minute
@@ -58,7 +58,7 @@ RESULT: PASS
 
 Done (~60s). Demo pack left at …/.failpack/packs/demo-five-minute (status=golden).
 Clean up with:  failpack rm demo-five-minute --force
-Next: failpack demo --claude-hermetic  (prove capture --claude-latest without Claude)  ·  failpack capture --claude-latest --id my-failure  ·  failpack demo   # full path with break/restore
+Next: failpack demo --claude-hermetic  (prove capture --claude-latest without Claude)  ·  failpack demo --cursor-hermetic  (prove capture --cursor-latest without Cursor)  ·  failpack capture --claude-latest --id my-failure  ·  failpack demo   # full path with break/restore
 RESULT: OK
 ```
 
@@ -75,6 +75,7 @@ failpack doctor
   [OK] claude-projects: not found (…) — optional
          tip: No sessions yet — try: failpack demo --fast  ·  or prove Claude one-shot: failpack demo --claude-hermetic (fake HOME + bundled fixture)  ·  or after a Claude Code run: failpack capture --claude-latest --id my-failure
   [OK] cursor-projects: not found (…) — optional
+         tip: No sessions yet — try: failpack demo --fast  ·  or prove Cursor one-shot: failpack demo --cursor-hermetic (fake HOME + bundled fixture)  ·  or after a Cursor agent run: failpack capture --cursor-latest --id cursor-fail
   [OK] layout: .failpack/ + packs/ at …
   [OK] packs: 1 pack(s) (1 golden, 0 captured)
 
@@ -139,7 +140,7 @@ laptop, fake HOME only (bundled fixture ships in the wheel):
 
 ```bash
 $ failpack demo --claude-hermetic
-failpack demo --claude-hermetic  ·  failpack 1.5.8
+failpack demo --claude-hermetic  ·  failpack 1.5.9
 
 ==> 1/4  seed fake HOME + capture --claude-latest → 'claude-hermetic'
     layout: ~/.claude/projects/<name>/*.jsonl
@@ -206,7 +207,52 @@ Doctor tips the same one-shot when sessions are present:
          tip: One-shot: failpack capture --claude-latest --id my-failure  (newest: 0192ef01-….jsonl)
 ```
 
-## 6) Optional next steps
+## 6) Cursor one-shot
+
+### 6a) Prove it hermetically (no live Cursor)
+
+After `pip install failpack` — no clone required:
+
+```bash
+$ failpack demo --cursor-hermetic
+failpack demo --cursor-hermetic  ·  failpack 1.5.9
+
+==> 1/4  seed fake HOME + capture --cursor-latest → 'cursor-hermetic'
+    layout: ~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl
+    fixture → ~/.cursor/projects/hermetic-demo/agent-transcripts/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl
+…
+Captured pack 'cursor-hermetic' → …/.failpack/packs/cursor-hermetic
+
+==> 2/4  promote --suggest --write → golden
+…
+
+==> 3/4  lint 'cursor-hermetic'
+RESULT: PASS
+
+==> 4/4  replay — should PASS
+RESULT: PASS
+
+PASS: hermetic Cursor one-shot proved (capture --cursor-latest without a live Cursor install).
+Done. Hermetic pack left at …/.failpack/packs/cursor-hermetic (status=golden).
+Clean up with:  failpack rm cursor-hermetic --force
+RESULT: OK
+```
+
+Checkout alias (thin wrapper): `./examples/cursor-latest-hermetic.sh`.
+
+### 6b) Real failure (when you have Cursor)
+
+```bash
+$ failpack capture --cursor-latest --id cursor-fail
+Captured pack 'cursor-fail' → …/.failpack/packs/cursor-fail
+Next: failpack promote --suggest --write cursor-fail  …
+
+$ failpack promote --suggest --write cursor-fail
+$ failpack replay cursor-fail
+```
+
+## 7) Optional next steps
+
 
 Use the pack the demo just created (`demo-five-minute`), not repo goldens like
 `demo-tool-denied` (those only exist in a FailPack checkout).
@@ -214,9 +260,6 @@ Use the pack the demo just created (`demo-five-minute`), not repo goldens like
 ```bash
 # Preview smarter assertions from the demo pack
 failpack promote --suggest demo-five-minute
-
-# Newest Cursor agent transcript (best-effort; fake HOME in tests)
-failpack capture --cursor-latest --id cursor-fail
 
 # Replay every golden pack
 failpack replay --all
@@ -227,10 +270,12 @@ failpack lint
 
 - [`five-minute-demo.sh`](five-minute-demo.sh) — delegates to `failpack demo`
 - [`claude-latest-hermetic.sh`](claude-latest-hermetic.sh) — thin alias for `failpack demo --claude-hermetic`
+- [`cursor-latest-hermetic.sh`](cursor-latest-hermetic.sh) — thin alias for `failpack demo --cursor-hermetic`
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
 - [`../docs/SUPPORT.md`](../docs/SUPPORT.md) — GitHub Issues + email
-- [`../RELEASE_NOTES_1.5.8.md`](../RELEASE_NOTES_1.5.8.md) — tagged GitHub Release `v1.5.8`
+- [`../RELEASE_NOTES_1.5.9.md`](../RELEASE_NOTES_1.5.9.md) — tagged GitHub Release `v1.5.9`
+- [`../RELEASE_NOTES_1.5.8.md`](../RELEASE_NOTES_1.5.8.md) — prior Release `v1.5.8`
 - [`../RELEASE_NOTES_1.5.7.md`](../RELEASE_NOTES_1.5.7.md) — prior Release `v1.5.7`
 - [`../RELEASE_NOTES_1.5.6.md`](../RELEASE_NOTES_1.5.6.md) — prior Release `v1.5.6`
 - [`../RELEASE_NOTES_1.5.5.md`](../RELEASE_NOTES_1.5.5.md) — prior Release `v1.5.5`
