@@ -52,6 +52,10 @@ Requires Python **3.11+**.
 - [`examples/claude-latest-demo.md`](examples/claude-latest-demo.md) and
   [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md) lead
   with the hermetic proof, then the real-machine one-shot.
+- Capture tip: `promote --suggest --write` is enough (plain promote after is
+  redundant). Same-id re-capture tips `--force` or a new `--id`.
+- Doctor `--score` empty agent dir detail notes half-credit; hermetic docs
+  spell `~/.claude/projects/<name>/*.jsonl`.
 - [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md): hermetic Claude one-shot marked
   **done**; Pages note stays honest (404 → Settings flip; do not claim live).
   Unpaid stranger walkthrough + real-user packs still open.

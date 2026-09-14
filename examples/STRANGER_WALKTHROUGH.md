@@ -91,11 +91,12 @@ RESULT: OK
 
 Score hits **100/100** when both Claude Code (`~/.claude/projects`) and Cursor
 (`~/.cursor/projects`) session trees exist **with transcripts**. Either agent
-alone adds **+5** with sessions; an empty agent projects dir can add **+2**
-half-credit — so a clean CI-style host may show **90**, and a laptop with an
-empty `~/.cursor/projects` may show **92**. Neither agent is required —
-fixtures and `failpack demo --fast` are enough. Missing both still yields at
-least **90/100** (does not break).
+alone adds **+5** with sessions; an **empty** agent projects dir (0 `*.jsonl`)
+still adds **+2** half-credit on the score row (soft — not a failure). So a
+clean CI-style host may show **90**, and a laptop with an empty
+`~/.cursor/projects` may show **92**. Neither agent is required — fixtures and
+`failpack demo --fast` are enough. Missing both still yields at least
+**90/100** (does not break).
 
 ## 4) Forced FAIL → explain → diff
 
@@ -147,16 +148,21 @@ Captured pack 'claude-hermetic' → …/.failpack/packs/claude-hermetic
 RESULT: PASS
 ```
 
-Or the manual fake-HOME dance (also covered in CI):
+Or the manual fake-HOME dance (also covered in CI). Layout is always
+`~/.claude/projects/<name>/*.jsonl` — accept/hermetic demos use
+`projects/demo/session.jsonl` or `projects/hermetic-demo/session.jsonl`:
 
 ```bash
 export HOME=/tmp/failpack-fake-home
 mkdir -p "$HOME/.claude/projects/demo"
 cp fixtures/claude-code-failure.jsonl "$HOME/.claude/projects/demo/session.jsonl"
 failpack capture --claude-latest --id from-fake-home --force
-failpack promote --suggest --write from-fake-home
+failpack promote --suggest --write from-fake-home   # applies; no plain promote needed
 failpack replay from-fake-home
 ```
+
+Re-running capture on the same id needs `--force` (or a new `--id`); the
+error tip spells both options.
 
 This is **not** a real-user pack — it is the stranger/CI proof that
 `--claude-latest` works without inventing fake “user” goldens.
@@ -170,9 +176,9 @@ $ failpack capture --claude-latest --id my-failure
 Claude one-shot: newest session under ~/.claude/projects
   using: /home/you/.claude/projects/…/0192ef01-….jsonl
 Captured pack 'my-failure' → …/.failpack/packs/my-failure
-Next: failpack promote --suggest my-failure  ·  failpack promote --suggest --write my-failure  ·  failpack replay my-failure
+Next: failpack promote --suggest --write my-failure  (applies; --suggest alone previews)  ·  failpack replay my-failure
 
-$ failpack promote --suggest --write my-failure
+$ failpack promote --suggest --write my-failure   # enough — no plain promote needed
 $ failpack replay my-failure
 ```
 

@@ -294,7 +294,9 @@ def cmd_capture(
         if pack.exists():
             if not force:
                 raise FileExistsError(
-                    f"Pack '{pid}' already exists at {pack}. Use --force to overwrite."
+                    f"Pack '{pid}' already exists at {pack}.\n"
+                    f"  • Overwrite: failpack capture … --id {pid} --force\n"
+                    f"  • Or pick a new id: failpack capture … --id {pid}-2"
                 )
             shutil.rmtree(pack)
 

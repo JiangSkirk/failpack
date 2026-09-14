@@ -33,7 +33,7 @@ failpack doctor --score              # 0–100 readiness + checklist
 failpack capture --claude-latest --id my-failure   # Claude Code one-shot
 failpack capture --cursor-latest --id cursor-fail
 failpack promote --suggest my-failure
-failpack promote --suggest --write my-failure
+failpack promote --suggest --write my-failure      # apply when they look right (enough)
 failpack replay my-failure
 failpack explain my-failure          # when something FAILs
 failpack diff my-failure             # expected vs actual (no full replay)

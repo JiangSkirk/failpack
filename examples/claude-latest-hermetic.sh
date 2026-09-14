@@ -48,6 +48,7 @@ failpack --version
 
 echo
 echo "==> hermetic Claude one-shot (HOME=${FAKE_HOME})"
+echo "    layout: ~/.claude/projects/<name>/*.jsonl"
 echo "    fixture → ~/.claude/projects/hermetic-demo/session.jsonl"
 failpack --root "$WORKSPACE" capture --claude-latest --id "$PACK_ID" --force
 

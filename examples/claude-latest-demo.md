@@ -15,17 +15,23 @@ pip install -e ".[dev]"
 ```
 
 That script sets `HOME` to a temp dir, copies
-`fixtures/claude-code-failure.jsonl` under `~/.claude/projects/…/session.jsonl`,
-then runs **capture --claude-latest → promote → replay**. Or do it by hand:
+`fixtures/claude-code-failure.jsonl` under
+`~/.claude/projects/<name>/*.jsonl` (here
+`projects/hermetic-demo/session.jsonl`), then runs
+**capture --claude-latest → promote → replay**. Or do it by hand
+(layout is always `~/.claude/projects/<name>/*.jsonl` — accept used
+`projects/demo/session.jsonl`):
 
 ```bash
 export HOME=/tmp/failpack-fake-home
 mkdir -p "$HOME/.claude/projects/demo"
 cp fixtures/claude-code-failure.jsonl "$HOME/.claude/projects/demo/session.jsonl"
 failpack capture --claude-latest --id from-fake-home --force
-failpack promote --suggest --write from-fake-home
+failpack promote --suggest --write from-fake-home   # applies; plain promote not needed
 failpack replay from-fake-home
 ```
+
+Re-capture the same id? Pass `--force` or pick a new `--id` — the error tip says both.
 
 Doctor tips the same path when no sessions exist (`demo --fast` / hermetic
 script first). FailPack never requires a live agent install in the repo.
@@ -34,7 +40,7 @@ script first). FailPack never requires a live agent install in the repo.
 
 ```bash
 failpack capture --claude-latest --id my-failure
-failpack promote --suggest --write my-failure
+failpack promote --suggest --write my-failure   # applies (enough — no plain promote needed)
 failpack replay my-failure
 ```
 
@@ -44,7 +50,7 @@ On capture success you should see:
 Claude one-shot: newest session under ~/.claude/projects
   using: /home/you/.claude/projects/…/0192ef01-….jsonl
 Captured pack 'my-failure' → …/.failpack/packs/my-failure
-Next: failpack promote --suggest my-failure  ·  failpack promote --suggest --write my-failure  ·  failpack replay my-failure
+Next: failpack promote --suggest --write my-failure  (applies; --suggest alone previews)  ·  failpack replay my-failure
 ```
 
 No Claude sessions yet? Doctor and the error message both tip:
@@ -108,8 +114,8 @@ demo-wrong-test-cmd    golden    4     2026-09-14T…
 
 ```bash
 $ failpack promote --suggest --write claude-latest-demo
-$ failpack promote claude-latest-demo   # or plain promote
 Promoted pack 'claude-latest-demo' to golden (…/assertions.yaml)
+# --suggest --write is enough; plain `promote` after that is redundant (idempotent)
 
 $ failpack replay claude-latest-demo
 failpack replay: claude-latest-demo

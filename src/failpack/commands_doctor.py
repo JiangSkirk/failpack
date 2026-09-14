@@ -343,7 +343,7 @@ def _score_agent_projects(
         return DoctorCheck(
             name,
             True,
-            f"found ({projects}) with 0 sessions",
+            f"found ({projects}) with 0 sessions — +{half}/{w} half-credit",
             fix=empty_fix,
             points=half,
             max_points=w,

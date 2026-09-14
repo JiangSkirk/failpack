@@ -836,8 +836,8 @@ def _handle_capture(args: argparse.Namespace) -> int:
     print(f"Captured pack '{pack.name}' → {pack}")
     if args.claude_latest or args.cursor_latest:
         print(
-            f"Next: failpack promote --suggest {pack.name}  ·  "
-            f"failpack promote --suggest --write {pack.name}  ·  "
+            f"Next: failpack promote --suggest --write {pack.name}  "
+            f"(applies; --suggest alone previews)  ·  "
             f"failpack replay {pack.name}"
         )
     return 0

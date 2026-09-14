@@ -1059,7 +1059,8 @@ def test_cli_capture_claude_latest_honors_HOME(
     assert "via-cli" in out
     assert "Claude one-shot" in out
     assert "using:" in out
-    assert "Next: failpack promote --suggest via-cli" in out
+    assert "Next: failpack promote --suggest --write via-cli" in out
+    assert "applies" in out or "--suggest alone" in out
     meta = read_meta(workspace / ".failpack" / "packs" / "via-cli")
     assert meta["exit_code"] == 4
 
@@ -1078,6 +1079,15 @@ def test_claude_latest_conflicts_with_path(workspace: Path, tmp_path: Path) -> N
     home = _fake_claude_home(tmp_path)
     with pytest.raises(ValueError, match="only one"):
         resolve_transcript_path(FIXTURE, claude_latest=True, home=home)
+
+
+def test_capture_same_id_tips_force_or_new_id(workspace: Path) -> None:
+    cmd_capture(FIXTURE, pack_id="dup-id", root=workspace)
+    with pytest.raises(FileExistsError, match=r"--force|new id") as exc:
+        cmd_capture(FIXTURE, pack_id="dup-id", root=workspace)
+    msg = str(exc.value)
+    assert "--force" in msg
+    assert "dup-id-2" in msg or "new id" in msg.lower() or "--id" in msg
 
 
 def test_re_promote_refreshes_assertions_after_intentional_fix(workspace: Path) -> None:
