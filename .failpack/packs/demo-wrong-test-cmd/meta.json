@@ -4,6 +4,7 @@
   "exit_code": 4,
   "id": "demo-wrong-test-cmd",
   "promoted_at": "2026-09-14T08:39:32+00:00",
+  "schema_version": 1,
   "session_id": "demo-wrong-test-cmd",
   "session_status": "failed",
   "source_transcript": "/workspace/fixtures/claude-code-wrong-test-cmd.jsonl",

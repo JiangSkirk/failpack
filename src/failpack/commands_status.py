@@ -22,6 +22,7 @@ class StatusReport:
         lines = [
             f"failpack status: {self.pack_id}",
             f"  status:       {m.get('status', 'unknown')}",
+            f"  schema:       {m.get('schema_version', '(unset)')}",
             f"  exit_code:    {m.get('exit_code', '-')}",
             f"  events:       {m.get('event_count', '-')}",
             f"  session_id:   {m.get('session_id') or '-'}",

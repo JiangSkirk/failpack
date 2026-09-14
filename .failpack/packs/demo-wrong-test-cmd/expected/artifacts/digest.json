@@ -1,0 +1,7 @@
+{
+  "error_message": "ERROR: file or directory not found: tests/test_auth.py\nWrong test command — pytest targeted a missing file (exit_code=4)",
+  "event_count": 8,
+  "exit_code": 4,
+  "status": "failed",
+  "written_files": []
+}

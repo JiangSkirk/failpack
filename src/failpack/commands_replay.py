@@ -9,6 +9,7 @@ from typing import Any
 
 from failpack.color import paint, use_color
 from failpack.commands_list import list_packs
+from failpack.diffutil import fingerprint_diff
 from failpack.pack import artifacts_dir, glob_fingerprint, read_assertions, read_meta, sha256_file
 from failpack.paths import failpack_dir, require_pack
 
@@ -21,6 +22,7 @@ class CheckResult:
     expected: str | None = None
     actual: str | None = None
     hint: str | None = None
+    diff: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -78,6 +80,10 @@ class ReplayReport:
                     lines.append(f"         actual:   {c.actual}")
                 if c.hint:
                     lines.append(f"         hint:     {c.hint}")
+                if c.diff:
+                    lines.append("         diff:")
+                    for dline in c.diff.splitlines():
+                        lines.append(f"           {dline}")
         result = "PASS" if self.ok else "FAIL"
         lines.append(
             "RESULT: " + paint(result, "green" if self.ok else "red", enabled=enabled)
@@ -127,6 +133,10 @@ class ReplayAllReport:
                         lines.append(f"           actual:   {c.actual}")
                     if c.hint:
                         lines.append(f"           hint:     {c.hint}")
+                    if c.diff:
+                        lines.append("           diff:")
+                        for dline in c.diff.splitlines():
+                            lines.append(f"             {dline}")
         failed = [r.pack_id for r in self.reports if not r.ok]
         result = "PASS" if self.ok else "FAIL"
         lines.append(
@@ -160,7 +170,12 @@ def _normalize_glob_entries(assertions: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-def cmd_replay(pack_id: str, *, root: Path | None = None) -> ReplayReport:
+def cmd_replay(
+    pack_id: str,
+    *,
+    root: Path | None = None,
+    show_diff: bool = True,
+) -> ReplayReport:
     pack = require_pack(pack_id, root)
     meta = read_meta(pack)
     if meta.get("status") != "golden":
@@ -248,6 +263,9 @@ def cmd_replay(pack_id: str, *, root: Path | None = None) -> ReplayReport:
         actual = sha256_file(path)
         ok = actual == expected
         detail = "match" if ok else f"expected {expected[:12]}… got {actual[:12]}…"
+        diff_text = None
+        if not ok and show_diff:
+            diff_text = fingerprint_diff(pack, rel)
         report.checks.append(
             CheckResult(
                 name,
@@ -256,6 +274,7 @@ def cmd_replay(pack_id: str, *, root: Path | None = None) -> ReplayReport:
                 expected=expected if not ok else None,
                 actual=actual if not ok else None,
                 hint=None if ok else _hint_for_check(name),
+                diff=diff_text,
             )
         )
 
@@ -350,7 +369,11 @@ def cmd_replay(pack_id: str, *, root: Path | None = None) -> ReplayReport:
     return report
 
 
-def cmd_replay_all(*, root: Path | None = None) -> ReplayAllReport:
+def cmd_replay_all(
+    *,
+    root: Path | None = None,
+    show_diff: bool = True,
+) -> ReplayAllReport:
     """Replay every golden pack under ``.failpack/packs/``."""
     base = failpack_dir(root)
     if not base.is_dir():
@@ -363,5 +386,5 @@ def cmd_replay_all(*, root: Path | None = None) -> ReplayAllReport:
         if row.status != "golden":
             all_report.skipped_non_golden.append(row.id)
             continue
-        all_report.reports.append(cmd_replay(row.id, root=root))
+        all_report.reports.append(cmd_replay(row.id, root=root, show_diff=show_diff))
     return all_report

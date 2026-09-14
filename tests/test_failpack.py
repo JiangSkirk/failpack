@@ -18,10 +18,14 @@ from failpack.commands_capture import cmd_capture, find_newest_jsonl, resolve_tr
 from failpack.commands_doctor import cmd_doctor
 from failpack.commands_init import cmd_init
 from failpack.commands_list import cmd_list
+from failpack.commands_migrate import cmd_migrate
 from failpack.commands_promote import cmd_promote
 from failpack.commands_replay import cmd_replay, cmd_replay_all
 from failpack.commands_status import cmd_status
+from failpack.commands_watch import cmd_watch
+from failpack.diffutil import short_unified_diff
 from failpack.pack import glob_fingerprint, read_meta, sha256_file
+from failpack.schema import CURRENT_SCHEMA_VERSION
 
 REPO = Path(__file__).resolve().parents[1]
 FIXTURE = REPO / "fixtures" / "claude-code-failure.jsonl"
@@ -88,8 +92,19 @@ def test_replay_fails_when_artifact_mutated(workspace: Path) -> None:
     assert failed[0].expected != failed[0].actual
     assert failed[0].hint and "artifact drifted" in failed[0].hint
     assert "artifacts/error.txt" in failed[0].hint
+    assert failed[0].diff and "MUTATED_BY_TEST" in failed[0].diff
+    assert "--- expected/artifacts/error.txt" in failed[0].diff
     summary = "\n".join(report.summary_lines(color=False))
     assert "artifact drifted — inspect artifacts/error.txt" in summary
+    assert "diff:" in summary
+    assert "MUTATED_BY_TEST" in summary
+
+    # --no-diff / show_diff=False suppresses the unified diff
+    quiet = cmd_replay(DEMO_ID, root=workspace, show_diff=False)
+    quiet_fail = next(c for c in quiet.checks if not c.ok and "fingerprint:artifacts/error.txt" in c.name)
+    assert quiet_fail.diff is None
+    quiet_summary = "\n".join(quiet.summary_lines(color=False))
+    assert "diff:" not in quiet_summary
 
 
 def test_replay_fails_when_exit_code_assertion_breaks(workspace: Path) -> None:
@@ -179,6 +194,7 @@ def test_list_and_status_for_shipped_packs() -> None:
     status = cmd_status(DEMO_ID, root=REPO)
     lines = "\n".join(status.summary_lines())
     assert "status:       golden" in lines
+    assert "schema:" in lines
     assert "min_events" in lines
     assert "glob_fingerprint" in lines
 
@@ -395,8 +411,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_0_3_0() -> None:
-    assert __version__ == "0.3.0"
+def test_version_is_0_4_0() -> None:
+    assert __version__ == "0.4.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -415,7 +431,127 @@ def test_help_mentions_examples() -> None:
                 replay_help = sub.format_help()
     assert replay_help is not None
     assert "--json" in replay_help
+    assert "--no-diff" in replay_help
     assert "examples:" in replay_help
+
+
+def test_short_unified_diff_truncates() -> None:
+    expected = "line\n" * 5
+    actual = "line\n" * 4 + "changed\n"
+    diff = short_unified_diff(expected, actual, max_lines=8)
+    assert "--- expected" in diff
+    assert "+++ actual" in diff
+    assert "changed" in diff
+
+
+def test_promote_writes_schema_and_expected(workspace: Path) -> None:
+    _capture_and_promote(workspace)
+    pack = workspace / ".failpack" / "packs" / DEMO_ID
+    meta = read_meta(pack)
+    assert meta["schema_version"] == CURRENT_SCHEMA_VERSION
+    assert (pack / "expected" / "artifacts" / "error.txt").is_file()
+    # Snapshot matches golden artifact at promote time
+    assert (pack / "expected" / "artifacts" / "error.txt").read_text(
+        encoding="utf-8"
+    ) == (pack / "artifacts" / "error.txt").read_text(encoding="utf-8")
+
+
+def test_migrate_noop_when_current(workspace: Path) -> None:
+    _capture_and_promote(workspace)
+    first = cmd_migrate(root=workspace)
+    assert first.ok
+    assert "already at schema version" in first.message
+    assert DEMO_ID in first.already_current
+    assert not first.migrated
+    lines = "\n".join(first.summary_lines())
+    assert "nothing to do" in lines
+
+    # Strip schema_version → migrate upgrades
+    pack = workspace / ".failpack" / "packs" / DEMO_ID
+    meta = read_meta(pack)
+    meta.pop("schema_version", None)
+    (pack / "meta.json").write_text(
+        __import__("json").dumps(meta, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    second = cmd_migrate(root=workspace)
+    assert DEMO_ID in second.migrated
+    assert read_meta(pack)["schema_version"] == CURRENT_SCHEMA_VERSION
+
+
+def test_migrate_empty_workspace(workspace: Path) -> None:
+    report = cmd_migrate(root=workspace)
+    assert report.ok
+    assert "no packs" in report.message.lower() or "current" in report.message.lower()
+
+
+def test_watch_capture_promote_replay(workspace: Path) -> None:
+    pid, report = cmd_watch(FIXTURE, pack_id="watched", root=workspace, force=True)
+    assert pid == "watched"
+    assert report.ok, "\n".join(report.summary_lines())
+    meta = read_meta(workspace / ".failpack" / "packs" / "watched")
+    assert meta["status"] == "golden"
+    assert meta["schema_version"] == CURRENT_SCHEMA_VERSION
+
+
+def test_cli_watch_exits_1_on_fail(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    # First watch succeeds
+    with pytest.raises(SystemExit) as ok:
+        main(["--root", str(workspace), "watch", str(FIXTURE), "--id", "w1", "--force"])
+    assert ok.value.code == 0
+
+    # Mutate artifact then replay via watch overwrite? Instead break after promote:
+    pack = workspace / ".failpack" / "packs" / "w1"
+    err = pack / "artifacts" / "error.txt"
+    err.write_text(err.read_text(encoding="utf-8") + "\nBROKEN\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as bad:
+        main(["--root", str(workspace), "replay", "w1"])
+    assert bad.value.code == 1
+    out = capsys.readouterr().out
+    assert "FAIL" in out
+    assert "diff:" in out
+
+
+def test_cli_replay_no_diff_flag(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _capture_and_promote(workspace)
+    pack = workspace / ".failpack" / "packs" / DEMO_ID
+    err = pack / "artifacts" / "error.txt"
+    err.write_text(err.read_text(encoding="utf-8") + "\nX\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "replay", DEMO_ID, "--no-diff"])
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "FAIL" in out
+    assert "diff:" not in out
+
+
+def test_init_ci_writes_workflow(tmp_path: Path) -> None:
+    fp, workflow = cmd_init(tmp_path, ci=True)
+    assert fp.is_dir()
+    assert workflow is not None
+    assert workflow.is_file()
+    text = workflow.read_text(encoding="utf-8")
+    assert "failpack-replay" in text
+    assert "JiangSkirk/failpack" in text
+    # Idempotent: second init --ci does not clobber
+    workflow.write_text("# custom\n", encoding="utf-8")
+    _, again = cmd_init(tmp_path, ci=True)
+    assert again.read_text(encoding="utf-8") == "# custom\n"
+
+
+def test_shipped_packs_have_schema_version() -> None:
+    for pack_id in GOLDEN_IDS:
+        meta = read_meta(REPO / ".failpack" / "packs" / pack_id)
+        assert meta.get("schema_version") == CURRENT_SCHEMA_VERSION
+        expected = REPO / ".failpack" / "packs" / pack_id / "expected"
+        assert expected.is_dir(), f"expected/ missing for {pack_id}"
+
+
+def test_pre_commit_hook_example_exists() -> None:
+    hook = REPO / "examples" / "pre-commit-hook.sh"
+    assert hook.is_file()
+    text = hook.read_text(encoding="utf-8")
+    assert "failpack replay --all" in text
 
 
 def test_no_color_disables_ansi(monkeypatch: pytest.MonkeyPatch) -> None:

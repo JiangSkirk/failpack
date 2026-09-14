@@ -1,0 +1,10 @@
+{
+  "error_message": "NameError: name 'health_payload' is not defined\nImport missing in app/main.py — tests failed with exit_code=1",
+  "event_count": 11,
+  "exit_code": 1,
+  "status": "failed",
+  "written_files": [
+    "app/health.py",
+    "app/main.py"
+  ]
+}

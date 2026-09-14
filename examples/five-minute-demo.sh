@@ -19,42 +19,33 @@ FIXTURE="fixtures/claude-code-failure.jsonl"
 PACK_DIR=".failpack/packs/${PACK_ID}"
 ASSERTIONS="${PACK_DIR}/assertions.yaml"
 
-echo "==> 1/7  failpack --version (expect 0.3.x)"
+echo "==> 1/8  failpack --version (expect 0.4.x)"
 failpack --version
 
 echo
-echo "==> 2/7  doctor — env + .failpack/ layout"
+echo "==> 2/8  doctor — env + .failpack/ layout"
 failpack doctor
 
 echo
-echo "==> 3/7  capture a fixture transcript into a disposable pack"
+echo "==> 3/8  capture a fixture transcript into a disposable pack"
 # --force so re-running the demo is safe
 failpack capture "$FIXTURE" --id "$PACK_ID" --force
 
 echo
-echo "==> 4/7  promote → golden assertions.yaml"
+echo "==> 4/8  promote → golden assertions.yaml"
 failpack promote "$PACK_ID"
 failpack status "$PACK_ID"
 
 echo
-echo "==> 5/7  replay — should PASS"
+echo "==> 5/8  replay — should PASS"
 failpack replay "$PACK_ID"
 
 echo
-echo "==> 6/7  intentional break — mutate a substring assertion, replay should FAIL"
-# Save original assertions so we can restore cleanly
-cp "$ASSERTIONS" "${ASSERTIONS}.bak"
-python3 - <<'PY'
-from pathlib import Path
-import yaml
-
-path = Path(".failpack/packs/demo-five-minute/assertions.yaml")
-data = yaml.safe_load(path.read_text(encoding="utf-8"))
-assert data.get("substrings"), "expected substring assertions"
-data["substrings"][0]["contains"] = "THIS_STRING_DOES_NOT_EXIST_IN_ARTIFACTS"
-path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
-print("mutated substring assertion")
-PY
+echo "==> 6/8  intentional break — mutate artifact text, replay should FAIL with diff"
+# Save original artifact so we can restore cleanly
+ERROR_TXT="${PACK_DIR}/artifacts/error.txt"
+cp "$ERROR_TXT" "${ERROR_TXT}.bak"
+printf '\nMUTATED_BY_DEMO\n' >> "$ERROR_TXT"
 
 set +e
 failpack replay "$PACK_ID"
@@ -62,22 +53,26 @@ code=$?
 set -e
 if [[ "$code" -eq 0 ]]; then
   echo "error: expected replay to fail after intentional break" >&2
-  mv "${ASSERTIONS}.bak" "$ASSERTIONS"
+  mv "${ERROR_TXT}.bak" "$ERROR_TXT"
   exit 1
 fi
-echo "(exit ${code} — expected FAIL; check expected/actual/hint above)"
+echo "(exit ${code} — expected FAIL; check expected/actual/hint/diff above)"
 
-# Also show machine-readable output once
+# Also show --no-diff once
 echo
-echo "==> optional: same failure as --json"
+echo "==> optional: same failure with --no-diff (no unified diff block)"
 set +e
-failpack replay "$PACK_ID" --json | head -n 40
+failpack replay "$PACK_ID" --no-diff | head -n 30
 set -e
 
 echo
-echo "==> 7/7  restore assertions → replay should PASS again"
-mv "${ASSERTIONS}.bak" "$ASSERTIONS"
+echo "==> 7/8  restore artifact → replay should PASS again"
+mv "${ERROR_TXT}.bak" "$ERROR_TXT"
 failpack replay "$PACK_ID"
+
+echo
+echo "==> 8/8  migrate (should no-op — already current)"
+failpack migrate
 
 echo
 echo "Done. Demo pack left at ${PACK_DIR} (status=golden)."

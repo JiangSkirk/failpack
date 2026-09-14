@@ -1,4 +1,4 @@
-"""failpack init — create .failpack/ layout."""
+"""failpack init — create .failpack/ layout (optionally a starter CI workflow)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,52 @@ from pathlib import Path
 
 from failpack.paths import FAILPACK_DIR, PACKS_DIR
 
+CI_WORKFLOW_REL = Path(".github") / "workflows" / "failpack.yml"
 
-def cmd_init(root: Path | None = None) -> Path:
+CI_WORKFLOW_TEMPLATE = """\
+# Written by `failpack init --ci`. Pin the action to a tag/SHA in real use.
+name: FailPack regression replay
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  failpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
+        with:
+          # This repo: install from the checkout. Other repos: omit install-from
+          # (defaults to git+https://github.com/JiangSkirk/failpack.git).
+          install-from: "."
+          # run-doctor: "true"
+          # json: "false"
+"""
+
+WORKSPACE_README = """\
+# FailPack workspace
+
+Packs live under `packs/<id>/`.
+
+- `failpack doctor` — check env + this layout
+- `failpack list` — list packs (id, status, exit_code, promoted_at)
+- `failpack status <id>` — meta + assertion summary
+- `failpack capture <transcript.jsonl|dir>` — ingest a failure session
+- `failpack promote <id>` — mark golden and write assertions
+- `failpack watch <transcript>` — capture → promote → replay (local)
+- `failpack replay <id>` / `failpack replay --all` — verify assertions in CI
+- `failpack migrate` — stamp pack schema_version (no-op if current)
+"""
+
+
+def cmd_init(root: Path | None = None, *, ci: bool = False) -> tuple[Path, Path | None]:
+    """Create ``.failpack/`` layout. With *ci*, also write a starter workflow.
+
+    Returns ``(failpack_dir, ci_workflow_path_or_none)``.
+    """
     base = (root or Path.cwd()).resolve()
     fp = base / FAILPACK_DIR
     packs = fp / PACKS_DIR
@@ -17,15 +61,13 @@ def cmd_init(root: Path | None = None) -> Path:
         gitkeep.write_text("", encoding="utf-8")
     readme = fp / "README.md"
     if not readme.exists():
-        readme.write_text(
-            "# FailPack workspace\n\n"
-            "Packs live under `packs/<id>/`.\n\n"
-            "- `failpack doctor` — check env + this layout\n"
-            "- `failpack list` — list packs (id, status, exit_code, promoted_at)\n"
-            "- `failpack status <id>` — meta + assertion summary\n"
-            "- `failpack capture <transcript.jsonl|dir>` — ingest a failure session\n"
-            "- `failpack promote <id>` — mark golden and write assertions\n"
-            "- `failpack replay <id>` / `failpack replay --all` — verify assertions in CI\n",
-            encoding="utf-8",
-        )
-    return fp
+        readme.write_text(WORKSPACE_README, encoding="utf-8")
+
+    workflow_path: Path | None = None
+    if ci:
+        workflow_path = base / CI_WORKFLOW_REL
+        workflow_path.parent.mkdir(parents=True, exist_ok=True)
+        if not workflow_path.exists():
+            workflow_path.write_text(CI_WORKFLOW_TEMPLATE, encoding="utf-8")
+        # If it already exists, leave it alone (idempotent init).
+    return fp, workflow_path

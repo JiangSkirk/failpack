@@ -4,6 +4,7 @@
   "exit_code": 13,
   "id": "demo-permission-denied",
   "promoted_at": "2026-09-14T08:49:52+00:00",
+  "schema_version": 1,
   "session_id": "demo-permission-denied",
   "session_status": "failed",
   "source_transcript": "/workspace/fixtures/claude-code-permission-denied.jsonl",

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Any
 
+from failpack.diffutil import write_expected_snapshot
 from failpack.pack import (
     artifacts_dir,
     glob_fingerprint,
@@ -15,6 +17,7 @@ from failpack.pack import (
     write_meta,
 )
 from failpack.paths import require_pack
+from failpack.schema import with_current_schema
 
 
 def _default_assertions(pack: Path, meta: dict[str, Any]) -> dict[str, Any]:
@@ -83,12 +86,23 @@ def _default_assertions(pack: Path, meta: dict[str, Any]) -> dict[str, Any]:
     return assertions
 
 
+def _write_expected_snapshots(pack: Path, fingerprints: list[dict[str, str]]) -> None:
+    """Snapshot fingerprinted text artifacts for diff-aware explain on FAIL."""
+    expected_root = pack / "expected"
+    if expected_root.exists():
+        shutil.rmtree(expected_root)
+    for fp in fingerprints:
+        rel = fp["path"]
+        write_expected_snapshot(pack, rel, pack / rel)
+
+
 def cmd_promote(pack_id: str, *, root: Path | None = None) -> Path:
     pack = require_pack(pack_id, root)
     meta = read_meta(pack)
     assertions = _default_assertions(pack, meta)
     write_assertions(pack, assertions)
+    _write_expected_snapshots(pack, assertions.get("fingerprints") or [])
     meta["status"] = "golden"
     meta["promoted_at"] = utc_now_iso()
-    write_meta(pack, meta)
+    write_meta(pack, with_current_schema(meta))
     return pack

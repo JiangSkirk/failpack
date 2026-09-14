@@ -5,7 +5,7 @@
 #
 # One-liner style (pin to a tag or SHA in real use):
 #
-#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v0.3.0
+#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v0.4.0
 
 name: FailPack regression replay
 
