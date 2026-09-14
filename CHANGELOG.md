@@ -5,6 +5,39 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-09-14
+
+### Added
+
+- **`failpack demo --fast`** — ~60s stranger wow path (capture → promote →
+  replay only; skips doctor dump / break / migrate). README + stranger
+  walkthrough lead with this.
+- **Claude Code one-shot UX** — `capture --claude-latest` prints session path +
+  `Next: promote --suggest …`; clearer not-found messages; doctor tip points at
+  the one-shot (and `demo --fast`).
+- **`failpack watch` FAIL surface** — same **STORY** block and **`next:`** tip as
+  `failpack replay` on FAIL (`explain` · `promote --suggest` · `re-promote`).
+- README **Daily loop** section — capture → `promote --suggest` → replay → watch.
+- **[`docs/PUBLISH.md`](docs/PUBLISH.md)** — exact TestPyPI / PyPI steps
+  (`python -m build`, `twine check`, upload only with token).
+- PyPI-ready packaging: `LICENSE`, classifiers, project URLs, SPDX license,
+  trimmed sdist includes (no publish without token).
+- GitHub Release **`v1.2.0`** + [`RELEASE_NOTES_1.2.0.md`](RELEASE_NOTES_1.2.0.md).
+- Action docs / examples / `init --ci` pin **`@v1.2.0`** (keep `@main` as
+  alternative).
+
+### Changed
+
+- Version bump to **1.3.0**.
+- Watch CLI header shows `PASS` / `FAIL` after capture → promote → replay.
+- Docs timing: “Five-minute path” → “~60-second path”; Claude demo + stranger
+  walkthrough polished for one-shot capture.
+
+### Notes
+
+- Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
+  in this release (packaging + docs only).
+
 ## [1.2.0] — 2026-09-14
 
 ### Added

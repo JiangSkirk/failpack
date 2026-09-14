@@ -1,4 +1,4 @@
-"""failpack demo — one-command five-minute wow path."""
+"""failpack demo — one-command ~60-second wow path."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ class DemoReport:
     pack_dir: Path
     lines: list[str] = field(default_factory=list)
     ok: bool = True
+    fast: bool = False
 
     def summary_lines(self) -> list[str]:
         return list(self.lines)
@@ -47,24 +48,85 @@ def _emit(report: DemoReport, msg: str) -> None:
     report.lines.append(msg)
 
 
+def _run_fast_demo(
+    report: DemoReport,
+    *,
+    project: Path,
+    pack_id: str,
+    keep: bool,
+) -> DemoReport:
+    """Compact stranger path: capture → promote → replay (no doctor/break/migrate)."""
+    with tempfile.TemporaryDirectory(prefix="failpack-demo-") as tmp:
+        fixture = Path(tmp) / "demo-failure.jsonl"
+        fixture.write_bytes(demo_fixture_bytes())
+
+        _emit(report, f"failpack demo --fast  (~60s wow)  ·  failpack {__version__}")
+        _emit(report, "")
+        _emit(report, f"==> 1/3  capture bundled fixture → '{pack_id}'")
+        pack = cmd_capture(fixture, pack_id=pack_id, root=project, force=True)
+        _emit(report, f"Captured pack '{pack.name}' → {pack}")
+
+        _emit(report, "")
+        _emit(report, "==> 2/3  promote → golden")
+        cmd_promote(pack_id, root=project)
+        _emit(report, f"Promoted pack '{pack_id}' to golden")
+
+        _emit(report, "")
+        _emit(report, "==> 3/3  replay — should PASS")
+        replay_ok = cmd_replay(pack_id, root=project)
+        # Compact: RESULT line only (full check dump stays available via replay)
+        result_lines = [ln for ln in replay_ok.summary_lines() if ln.startswith("RESULT:")]
+        if result_lines:
+            report.lines.extend(result_lines)
+        else:
+            report.lines.extend(replay_ok.summary_lines())
+        if not replay_ok.ok:
+            report.ok = False
+            _emit(report, "RESULT: FAIL (expected PASS on clean replay)")
+            return report
+
+        _emit(report, "")
+        if keep:
+            _emit(report, f"Done (~60s). Demo pack left at {pack} (status=golden).")
+            _emit(report, f"Clean up with:  rm -rf {pack}")
+        else:
+            shutil.rmtree(pack)
+            report.pack_dir = pack
+            _emit(report, "Done (~60s). Demo pack removed (--no-keep).")
+
+        _emit(
+            report,
+            "Next: failpack capture --claude-latest --id my-failure  "
+            "·  failpack demo   # full path with break/restore",
+        )
+        _emit(report, "RESULT: OK")
+        return report
+
+
 def cmd_demo(
     *,
     root: Path | None = None,
     pack_id: str = DEMO_PACK_ID,
     keep: bool = True,
     skip_break: bool = False,
+    fast: bool = False,
 ) -> DemoReport:
     """Run the built-in capture → promote → replay (+ intentional break) path.
 
-    Mirrors ``examples/five-minute-demo.sh`` so README can say::
+    ``fast=True`` compresses the stranger wow path to ~60 seconds: capture →
+    promote → replay only (skips doctor dump, status dump, break/restore,
+    migrate). Mirrors README::
 
-        pip install "git+https://github.com/JiangSkirk/failpack.git" && failpack demo
+        pip install "git+https://github.com/JiangSkirk/failpack.git" && failpack demo --fast
     """
     project = find_root(root) if root is None else root.resolve()
     if not packs_dir(project).is_dir():
         cmd_init(project)
 
-    report = DemoReport(pack_id=pack_id, pack_dir=packs_dir(project) / pack_id)
+    report = DemoReport(pack_id=pack_id, pack_dir=packs_dir(project) / pack_id, fast=fast)
+
+    if fast:
+        return _run_fast_demo(report, project=project, pack_id=pack_id, keep=keep)
 
     with tempfile.TemporaryDirectory(prefix="failpack-demo-") as tmp:
         fixture = Path(tmp) / "demo-failure.jsonl"
@@ -154,5 +216,10 @@ def cmd_demo(
             report.pack_dir = pack
             _emit(report, "Done. Demo pack removed (--no-keep).")
 
+        _emit(
+            report,
+            "Tip: failpack demo --fast  for the ~60s stranger path; "
+            "failpack capture --claude-latest --id my-failure  for a real session.",
+        )
         _emit(report, "RESULT: OK")
         return report

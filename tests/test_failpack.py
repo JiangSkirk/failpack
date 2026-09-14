@@ -548,8 +548,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_1_1_0() -> None:
-    assert __version__ == "1.2.0"
+def test_version_is_1_3_0() -> None:
+    assert __version__ == "1.3.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -636,6 +636,8 @@ def test_cli_watch_exits_1_on_fail(workspace: Path, capsys: pytest.CaptureFixtur
     with pytest.raises(SystemExit) as ok:
         main(["--root", str(workspace), "watch", str(FIXTURE), "--id", "w1", "--force"])
     assert ok.value.code == 0
+    out_ok = capsys.readouterr().out
+    assert "PASS" in out_ok
 
     # Mutate artifact then replay via watch overwrite? Instead break after promote:
     pack = workspace / ".failpack" / "packs" / "w1"
@@ -647,6 +649,33 @@ def test_cli_watch_exits_1_on_fail(workspace: Path, capsys: pytest.CaptureFixtur
     out = capsys.readouterr().out
     assert "FAIL" in out
     assert "diff:" in out
+
+
+def test_cli_watch_prints_story_and_next_on_fail(
+    workspace: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Watch FAIL must surface the same STORY / next: tips as replay."""
+    from failpack import commands_watch as watch_mod
+    from failpack.commands_promote import cmd_promote
+
+    def promote_then_break(pack_id: str, **kwargs):  # type: ignore[no-untyped-def]
+        result = cmd_promote(pack_id, **kwargs)
+        pack = workspace / ".failpack" / "packs" / pack_id
+        err = pack / "artifacts" / "error.txt"
+        if err.is_file():
+            err.write_text(err.read_text(encoding="utf-8") + "\nWATCH-BROKEN\n", encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(watch_mod, "cmd_promote", promote_then_break)
+    with pytest.raises(SystemExit) as bad:
+        main(["--root", str(workspace), "watch", str(FIXTURE), "--id", "watch-fail", "--force"])
+    assert bad.value.code == 1
+    out = capsys.readouterr().out
+    assert "FAIL" in out
+    assert "STORY:" in out
+    assert "next: failpack explain watch-fail" in out
+    assert "promote --suggest watch-fail" in out
+    assert "re-promote watch-fail" in out
 
 
 def test_cli_replay_no_diff_flag(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -670,13 +699,14 @@ def test_init_ci_writes_workflow(tmp_path: Path) -> None:
     text = workflow.read_text(encoding="utf-8")
     assert "failpack-replay" in text
     assert "JiangSkirk/failpack" in text
-    assert "@v1.1.0" in text
+    assert "@v1.2.0" in text
     tip = (fp / "README.md").read_text(encoding="utf-8")
     assert "failpack demo" in tip
     assert "--claude-latest" in tip
     assert "--cursor-latest" in tip
     assert "failpack show" in tip
     assert "promote --suggest" in tip
+    assert "STORY" in tip or "next:" in tip
     # Idempotent: second init --ci does not clobber
     workflow.write_text("# custom\n", encoding="utf-8")
     _, again = cmd_init(tmp_path, ci=True)
@@ -859,6 +889,9 @@ def test_cli_capture_claude_latest_honors_HOME(
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "via-cli" in out
+    assert "Claude one-shot" in out
+    assert "using:" in out
+    assert "Next: failpack promote --suggest via-cli" in out
     meta = read_meta(workspace / ".failpack" / "packs" / "via-cli")
     assert meta["exit_code"] == 4
 
@@ -866,7 +899,7 @@ def test_cli_capture_claude_latest_honors_HOME(
 def test_claude_latest_missing_projects_dir(tmp_path: Path) -> None:
     empty_home = tmp_path / "empty-home"
     empty_home.mkdir()
-    with pytest.raises(FileNotFoundError, match=r"\.claude/projects"):
+    with pytest.raises(FileNotFoundError, match=r"demo --fast|one-shot|\.claude/projects"):
         find_claude_latest(home=empty_home)
 
 
@@ -959,11 +992,15 @@ def test_examples_docs_exist() -> None:
     assert demo.is_file()
     text = demo.read_text(encoding="utf-8")
     assert "failpack demo" in text
+    assert "--fast" in text
+    assert "~60s" in text or "60s" in text
     claude_doc = REPO / "examples" / "claude-latest-demo.md"
     assert claude_doc.is_file()
     body = claude_doc.read_text(encoding="utf-8")
     assert "--claude-latest" in body
     assert "re-promote" in body
+    assert "Claude one-shot" in body or "one-shot" in body
+    assert "promote --suggest" in body
     cursor_doc = REPO / "examples" / "cursor-latest-demo.md"
     assert cursor_doc.is_file()
     cursor_body = cursor_doc.read_text(encoding="utf-8")
@@ -974,25 +1011,32 @@ def test_examples_docs_exist() -> None:
     walk_body = walk.read_text(encoding="utf-8")
     assert "git+https://github.com/JiangSkirk/failpack.git" in walk_body
     assert "doctor --score" in walk_body
-    assert "failpack demo" in walk_body
+    assert "failpack demo --fast" in walk_body
+    assert "~60s" in walk_body or "60s" in walk_body
     assert "demo-five-minute" in walk_body
-    assert "promote --suggest demo-five-minute" in walk_body
+    assert "promote --suggest" in walk_body
+    assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "cursor-projects" in walk_body
-    assert "next: failpack explain" in walk_body
     assert "~/.local/bin" in walk_body
-    assert "RELEASE_NOTES_1.1.0" in walk_body
+    assert "RELEASE_NOTES_1.2.0" in walk_body
 
 
 def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.3.0" in changelog
     assert "1.2.0" in changelog
     assert "1.1.0" in changelog
     assert "1.0.0" in changelog
     assert "doctor --score" in changelog
     assert "cursor_projects" in changelog
     assert "next:" in changelog
+    assert "Daily loop" in changelog or "watch" in changelog.lower()
+    assert "PUBLISH.md" in changelog
+    assert "--fast" in changelog
+    assert "60s" in changelog or "~60" in changelog
+    assert "one-shot" in changelog.lower() or "claude-latest" in changelog
     assert "--suggest" in changelog
     assert "--cursor-latest" in changelog
     assert "0.9.0" in changelog
@@ -1012,7 +1056,8 @@ def test_doctor_claude_projects_missing_home(tmp_path: Path, workspace: Path) ->
     claude = next(c for c in report.checks if c.name == "claude-projects")
     assert claude.ok
     assert "not found" in claude.detail
-    assert claude.fix and "demo" in claude.fix
+    assert claude.fix and "demo --fast" in claude.fix
+    assert "--claude-latest" in (claude.fix or "")
     cursor = next(c for c in report.checks if c.name == "cursor-projects")
     assert cursor.ok
     assert "not found" in cursor.detail
@@ -1027,6 +1072,7 @@ def test_doctor_claude_projects_with_sessions(tmp_path: Path, workspace: Path) -
     assert claude.ok
     assert "session" in claude.detail
     assert claude.fix and "--claude-latest" in claude.fix
+    assert "One-shot" in (claude.fix or "") or "one-shot" in (claude.fix or "").lower()
 
 
 def test_doctor_cursor_projects_with_sessions(tmp_path: Path, workspace: Path) -> None:
@@ -1109,6 +1155,30 @@ def test_demo_end_to_end(workspace: Path) -> None:
     assert cmd_replay("demo-test", root=workspace).ok
 
 
+def test_demo_fast_compact_path(workspace: Path) -> None:
+    from failpack.commands_demo import cmd_demo
+
+    report = cmd_demo(root=workspace, pack_id="demo-fast", keep=True, fast=True)
+    assert report.ok, "\n".join(report.summary_lines())
+    assert report.fast
+    text = "\n".join(report.summary_lines())
+    assert "~60s" in text
+    assert "1/3" in text
+    assert "2/8" not in text  # full doctor path skipped
+    assert "RESULT: OK" in text
+    assert (workspace / ".failpack" / "packs" / "demo-fast" / "assertions.yaml").is_file()
+
+
+def test_cli_demo_fast(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "demo", "--fast", "--id", "cli-fast", "--no-keep"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "demo --fast" in out
+    assert "~60s" in out
+    assert "RESULT: OK" in out
+
+
 def test_demo_no_keep(workspace: Path) -> None:
     from failpack.commands_demo import cmd_demo
 
@@ -1172,12 +1242,14 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
+    assert "1.3.0" in text
     assert "1.2.0" in text
     assert "1.1.0" in text
     assert "1.0.0" in text
     assert "doctor --score" in text
     assert 'git+https://github.com/JiangSkirk/failpack.git' in text
-    assert "Five-minute path" in text
+    assert "~60-second path" in text or "demo --fast" in text
+    assert "Daily loop" in text
     assert "Pack lifecycle" in text
     assert "failpack report" in text
     assert "failpack lint" in text
@@ -1188,14 +1260,25 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "--suggest" in text
     assert "--cursor-latest" in text
     assert "cursor_projects" in text
+    assert "Claude one-shot" in text or "one-shot" in text.lower()
     assert "STRANGER_WALKTHROUGH" in text
     assert "badge.svg" in text
-    assert "@v1.1.0" in text
+    assert "@v1.2.0" in text
     assert "Stet" in text
     assert "AgentClash" in text
+    assert "stunning" not in text.lower()
     assert (REPO / "docs" / "PACKS.md").is_file()
+    assert (REPO / "docs" / "PUBLISH.md").is_file()
+    publish = (REPO / "docs" / "PUBLISH.md").read_text(encoding="utf-8")
+    assert "python -m build" in publish
+    assert "twine" in publish
+    assert "testpypi" in publish.lower() or "TestPyPI" in publish
     packs = (REPO / "docs" / "PACKS.md").read_text(encoding="utf-8")
     assert "demo-missing-import" in packs
+    assert (REPO / "RELEASE_NOTES_1.2.0.md").is_file()
+    notes12 = (REPO / "RELEASE_NOTES_1.2.0.md").read_text(encoding="utf-8")
+    assert "1.2.0" in notes12
+    assert "cursor_projects" in notes12 or "next:" in notes12
     assert (REPO / "RELEASE_NOTES_1.1.0.md").is_file()
     notes = (REPO / "RELEASE_NOTES_1.1.0.md").read_text(encoding="utf-8")
     assert "1.1.0" in notes
@@ -1206,10 +1289,10 @@ def test_readme_has_three_command_happy_path() -> None:
     action_readme = (REPO / ".github" / "actions" / "failpack-replay" / "README.md").read_text(
         encoding="utf-8"
     )
-    assert "@v1.1.0" in action_readme
+    assert "@v1.2.0" in action_readme
     assert "@main" in action_readme
     other_ci = (REPO / "examples" / "other-repo-ci.yml").read_text(encoding="utf-8")
-    assert "@v1.1.0" in other_ci
+    assert "@v1.2.0" in other_ci
 
 
 def test_rm_refuses_golden_without_force(workspace: Path) -> None:
