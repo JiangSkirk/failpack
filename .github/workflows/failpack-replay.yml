@@ -18,19 +18,13 @@ jobs:
       - name: Install FailPack
         run: pip install -e ".[dev]"
 
+      - name: Doctor
+        run: failpack doctor
+
       - name: Unit tests
         run: pytest -q
 
       - name: Replay all golden packs
         run: |
-          set -euo pipefail
           failpack list
-          for pack in .failpack/packs/*/meta.json; do
-            id="$(basename "$(dirname "$pack")")"
-            status="$(python -c "import json; print(json.load(open('$pack'))['status'])")"
-            if [ "$status" = "golden" ]; then
-              echo "::group::replay $id"
-              failpack replay "$id"
-              echo "::endgroup::"
-            fi
-          done
+          failpack replay --all

@@ -1,21 +1,47 @@
 # FailPack
 
-**FailPack** (alt name: **Orin Replay**) turns a coding-agent **failure session** into a **golden CI regression pack**.
+**FailPack** turns a coding-agent **failure session** into a **golden CI regression pack**.
 
 Capture a bad agent run once → promote it to golden → replay the assertions in CI so the same failure class cannot quietly regress.
 
 This is **not** a security gate. It is a regression memory for agent sessions.
 
-## What you get (v0)
+## Install
+
+Requires Python **3.11+**.
+
+```bash
+# from a local checkout
+pip install .
+
+# or directly from GitHub
+pip install git+https://github.com/JiangSkirk/failpack.git
+
+# editable + tests
+pip install -e ".[dev]"
+```
+
+Then confirm:
+
+```bash
+failpack --version
+failpack doctor
+```
+
+`failpack doctor` checks Python version, PyYAML, `.failpack/` layout, and pack counts, and prints fixes when something is missing.
+
+## What you get (v0.2)
 
 | Command | What it does |
 |---|---|
 | `failpack init` | Create `.failpack/` layout |
+| `failpack doctor` | Check env + workspace; print actionable fixes |
 | `failpack list` | List packs (id, status, exit_code, promoted_at) |
 | `failpack status <id>` | Show meta + assertion summary for one pack |
-| `failpack capture <transcript.jsonl>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
+| `failpack capture <transcript.jsonl\|dir>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
 | `failpack promote <id>` | Mark golden + write `assertions.yaml` |
 | `failpack replay <id>` | Verify assertions; **exit 0** on pass, **non-zero** on fail |
+| `failpack replay --all` | Replay every golden pack; **exit non-zero** if any fail |
 
 Shipped golden packs:
 
@@ -26,10 +52,10 @@ Shipped golden packs:
 
 ```bash
 # from this repo
-pip install -e ".[dev]"   # or: uv sync --extra dev
+pip install -e ".[dev]"
+failpack doctor
 failpack list
-failpack replay demo-missing-import    # exits 0
-failpack replay demo-wrong-test-cmd    # exits 0
+failpack replay --all                 # exits 0 when all golden packs pass
 failpack status demo-missing-import
 ```
 
@@ -41,7 +67,10 @@ failpack init
 # path to a fixture / exported transcript
 failpack capture fixtures/claude-code-failure.jsonl --id my-failure
 
-# or newest session under a Claude Code projects directory
+# directory: picks the newest *.jsonl underneath
+# tip: Claude Code sessions often live under ~/.claude/projects
+failpack capture ~/.claude/projects --id my-failure
+# same idea via explicit flag:
 failpack capture --from-claude-project ~/.claude/projects --id my-failure
 
 # or pipe JSONL on stdin
@@ -58,7 +87,7 @@ Break a golden assertion (or mutate an artifact under `.failpack/packs/<id>/arti
 
 ### CI
 
-See [`.github/workflows/failpack-replay.yml`](.github/workflows/failpack-replay.yml): install → pytest → replay **all** golden packs under `.failpack/packs/`.
+See [`.github/workflows/failpack-replay.yml`](.github/workflows/failpack-replay.yml): install → doctor → pytest → `failpack replay --all`.
 
 ## Pack layout
 
@@ -103,9 +132,10 @@ Details and landing copy: [`MONETIZATION.md`](MONETIZATION.md).
 ## Development
 
 ```bash
-pip install -e ".[dev]"   # or: uv sync --extra dev
+pip install -e ".[dev]"
 pytest -q
 failpack --help
+failpack doctor
 ```
 
 Requires Python 3.11+.
