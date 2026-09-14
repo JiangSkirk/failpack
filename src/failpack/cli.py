@@ -8,7 +8,10 @@ from pathlib import Path
 
 from failpack import __version__
 from failpack.commands_capture import cmd_capture
+from failpack.commands_demo import cmd_demo
 from failpack.commands_doctor import cmd_doctor
+from failpack.commands_export import cmd_export
+from failpack.commands_import import cmd_import
 from failpack.commands_init import cmd_init
 from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
@@ -29,15 +32,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         epilog=(
             "examples:\n"
+            "  failpack demo\n"
             "  failpack doctor\n"
             "  failpack capture --claude-latest --id my-failure\n"
-            "  failpack capture fixtures/claude-code-failure.jsonl --id my-failure\n"
-            "  failpack promote my-failure\n"
-            "  failpack re-promote my-failure\n"
-            "  failpack replay my-failure\n"
+            "  failpack promote my-failure && failpack replay my-failure\n"
+            "  failpack export my-failure -o my-failure.tgz\n"
+            "  failpack import my-failure.tgz\n"
             "  failpack replay --all\n"
             "  failpack list\n"
-            "  failpack watch fixtures/claude-code-failure.jsonl --id my-failure\n"
             "  failpack migrate\n"
             "  failpack init --ci\n"
             "\n"
@@ -76,11 +78,101 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_doctor = sub.add_parser(
         "doctor",
-        help="Check Python, PyYAML, .failpack/ layout, and pack counts",
+        help="Check Python, PyYAML, Claude projects, .failpack/ layout, packs",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="examples:\n  failpack doctor\n",
+        epilog=(
+            "examples:\n"
+            "  failpack doctor\n"
+            "\n"
+            "Also reports whether ~/.claude/projects exists and how many\n"
+            "session *.jsonl files are present (tips capture --claude-latest).\n"
+        ),
     )
     p_doctor.set_defaults(func=_handle_doctor)
+
+    p_demo = sub.add_parser(
+        "demo",
+        help="One-command five-minute wow path (capture → promote → replay)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack demo\n"
+            "  failpack demo --no-keep\n"
+            "  failpack demo --skip-break\n"
+            "\n"
+            "Zero-setup: pip install failpack && failpack demo\n"
+            "Uses a bundled fixture (same path as examples/five-minute-demo.sh).\n"
+        ),
+    )
+    p_demo.add_argument(
+        "--id",
+        dest="pack_id",
+        default=None,
+        help="Demo pack id (default: demo-five-minute)",
+    )
+    p_demo.add_argument(
+        "--no-keep",
+        action="store_true",
+        help="Remove the demo pack when finished",
+    )
+    p_demo.add_argument(
+        "--skip-break",
+        action="store_true",
+        help="Skip the intentional artifact break / restore steps",
+    )
+    p_demo.set_defaults(func=_handle_demo)
+
+    p_export = sub.add_parser(
+        "export",
+        help="Tar/zip a golden pack for sharing",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack export demo-missing-import\n"
+            "  failpack export demo-missing-import -o pack.tgz\n"
+            "  failpack export demo-missing-import -o pack.zip\n"
+            "\n"
+            "Archive includes assertions + expected + meta + artifacts + transcript.\n"
+        ),
+    )
+    p_export.add_argument("pack_id", help="Golden pack id under .failpack/packs/")
+    p_export.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Output archive path (default: <id>.tgz); .zip / .tgz / .tar.gz",
+    )
+    p_export.set_defaults(func=_handle_export)
+
+    p_import = sub.add_parser(
+        "import",
+        help="Restore a shared pack archive into .failpack/packs/",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack import pack.tgz\n"
+            "  failpack import pack.tgz --force\n"
+            "  failpack import pack.tgz --rename my-copy\n"
+            "\n"
+            "On id collision: --force overwrites, or --rename <id> imports under a new id.\n"
+        ),
+    )
+    p_import.add_argument("archive", type=Path, help="Path to pack.tgz / .tar.gz / .zip")
+    p_import.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing pack with the same id",
+    )
+    p_import.add_argument(
+        "--rename",
+        dest="rename",
+        default=None,
+        metavar="ID",
+        help="Import under a different pack id",
+    )
+    p_import.set_defaults(func=_handle_import)
 
     p_list = sub.add_parser(
         "list",
@@ -306,6 +398,36 @@ def _handle_doctor(args: argparse.Namespace) -> int:
     report = cmd_doctor(args.root)
     print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1
+
+
+def _handle_demo(args: argparse.Namespace) -> int:
+    from failpack.commands_demo import DEMO_PACK_ID
+
+    report = cmd_demo(
+        root=args.root,
+        pack_id=args.pack_id or DEMO_PACK_ID,
+        keep=not args.no_keep,
+        skip_break=args.skip_break,
+    )
+    print("\n".join(report.summary_lines()))
+    return 0 if report.ok else 1
+
+
+def _handle_export(args: argparse.Namespace) -> int:
+    out = cmd_export(args.pack_id, output=args.output, root=args.root)
+    print(f"Exported pack '{args.pack_id}' → {out}")
+    return 0
+
+
+def _handle_import(args: argparse.Namespace) -> int:
+    pack = cmd_import(
+        args.archive,
+        root=args.root,
+        force=args.force,
+        rename=args.rename,
+    )
+    print(f"Imported pack '{pack.name}' → {pack}")
+    return 0
 
 
 def _handle_list(args: argparse.Namespace) -> int:

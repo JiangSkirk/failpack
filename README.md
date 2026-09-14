@@ -6,6 +6,22 @@ Capture a bad agent run once → promote it to golden → replay the assertions 
 
 This is **not** a security gate. It is a regression memory for agent sessions.
 
+## Happy path (≤3 commands)
+
+Real Claude Code session → golden pack → CI signal:
+
+```bash
+failpack capture --claude-latest --id my-failure
+failpack promote my-failure
+failpack replay my-failure
+```
+
+Zero-setup wow (bundled fixture, no Claude required):
+
+```bash
+pip install failpack && failpack demo
+```
+
 ## Install
 
 Requires Python **3.11+**.
@@ -24,27 +40,30 @@ pip install -e ".[dev]"
 Then confirm:
 
 ```bash
-failpack --version   # → failpack 0.5.0
+failpack --version   # → failpack 0.6.0
 failpack doctor
 ```
 
-`failpack doctor` checks Python version, PyYAML, `.failpack/` layout, and pack counts, and prints fixes when something is missing.
+`failpack doctor` checks Python, PyYAML, whether `~/.claude/projects` exists (and how many sessions), `.failpack/` layout, and pack counts — with tips like `capture --claude-latest` when sessions are found.
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
-## What you get (v0.5)
+## What you get (v0.6)
 
 | Command | What it does |
 |---|---|
+| `failpack demo` | **One-command wow:** capture → promote → replay (+ intentional break) |
 | `failpack init` | Create `.failpack/` layout |
 | `failpack init --ci` | Also write a starter workflow that uses the composite action |
-| `failpack doctor` | Check env + workspace; print actionable fixes |
+| `failpack doctor` | Check env + Claude projects + workspace; print actionable fixes |
 | `failpack list` | Clean aligned table of packs (id, status, exit, promoted_at) |
 | `failpack status <id>` | Show meta + assertion summary for one pack |
 | `failpack capture --claude-latest` | **Magic path:** newest Claude Code session under `~/.claude/projects` |
 | `failpack capture <transcript.jsonl\|dir>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
 | `failpack promote <id>` | Mark golden + write `assertions.yaml` (+ expected text snapshots) |
 | `failpack re-promote <id>` | Refresh assertions from **current** artifacts after intentional fix |
+| `failpack export <id> [-o pack.tgz]` | Share a golden pack (assertions + expected + meta + artifacts) |
+| `failpack import <pack.tgz>` | Restore into `.failpack/packs/` (`--force` / `--rename`) |
 | `failpack watch <transcript>` | Capture → promote → replay (local; exit 1 on fail) |
 | `failpack replay <id>` | Verify assertions; **exit 0** on pass, **non-zero** on fail |
 | `failpack replay --all` | Replay every golden pack; **SUMMARY** of fails; exit non-zero if any fail |
@@ -66,16 +85,19 @@ Shipped golden packs:
 # from this repo
 pip install -e ".[dev]"
 failpack doctor
+failpack demo                         # or: ./examples/five-minute-demo.sh
 failpack list
 failpack replay --all                 # exits 0 when all golden packs pass
 failpack status demo-missing-import
 failpack migrate                      # already current → polite no-op
 ```
 
-Five-minute walkthrough (capture → promote → replay → intentional break → restore):
+### Share a pack
 
 ```bash
-./examples/five-minute-demo.sh
+failpack export demo-missing-import -o demo-missing-import.tgz
+failpack import demo-missing-import.tgz --rename shared-copy
+failpack replay shared-copy
 ```
 
 Claude latest magic path (screenshots-as-text):
@@ -210,6 +232,7 @@ pip install -e ".[dev]"
 pytest -q
 failpack --help
 failpack doctor
+failpack demo --skip-break
 failpack replay --all --json
 failpack migrate
 ```

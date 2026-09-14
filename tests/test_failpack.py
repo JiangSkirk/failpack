@@ -335,6 +335,7 @@ def test_doctor_ok_on_repo() -> None:
     names = {c.name for c in report.checks}
     assert "python" in names
     assert "pyyaml" in names
+    assert "claude-projects" in names
     assert "layout" in names
     assert "packs" in names
     packs = next(c for c in report.checks if c.name == "packs")
@@ -351,6 +352,7 @@ def test_doctor_missing_layout(tmp_path: Path) -> None:
     # python + pyyaml should still pass
     assert next(c for c in report.checks if c.name == "python").ok
     assert next(c for c in report.checks if c.name == "pyyaml").ok
+    assert next(c for c in report.checks if c.name == "claude-projects").ok
 
 
 def test_doctor_empty_workspace(workspace: Path) -> None:
@@ -359,7 +361,7 @@ def test_doctor_empty_workspace(workspace: Path) -> None:
     packs = next(c for c in report.checks if c.name == "packs")
     assert packs.ok
     assert "0 packs" in packs.detail
-    assert packs.fix and "capture" in packs.fix
+    assert packs.fix and ("capture" in packs.fix or "demo" in packs.fix)
 
 
 def test_replay_all_shipped_goldens() -> None:
@@ -416,8 +418,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_0_5_0() -> None:
-    assert __version__ == "0.5.0"
+def test_version_is_0_6_0() -> None:
+    assert __version__ == "0.6.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -769,7 +771,7 @@ def test_examples_docs_exist() -> None:
     demo = REPO / "examples" / "five-minute-demo.sh"
     assert demo.is_file()
     text = demo.read_text(encoding="utf-8")
-    assert "0.5" in text or "failpack --version" in text
+    assert "0.6" in text or "failpack demo" in text
     claude_doc = REPO / "examples" / "claude-latest-demo.md"
     assert claude_doc.is_file()
     body = claude_doc.read_text(encoding="utf-8")
@@ -781,5 +783,152 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "0.6.0" in changelog
     assert "0.5.0" in changelog
     assert "0.4.0" in changelog
+
+
+def test_doctor_claude_projects_missing_home(tmp_path: Path, workspace: Path) -> None:
+    empty_home = tmp_path / "empty-home"
+    empty_home.mkdir()
+    report = cmd_doctor(workspace, home=empty_home)
+    assert report.ok, "\n".join(report.summary_lines())
+    claude = next(c for c in report.checks if c.name == "claude-projects")
+    assert claude.ok
+    assert "not found" in claude.detail
+    assert claude.fix and "demo" in claude.fix
+
+
+def test_doctor_claude_projects_with_sessions(tmp_path: Path, workspace: Path) -> None:
+    home = _fake_claude_home(tmp_path)
+    report = cmd_doctor(workspace, home=home)
+    assert report.ok, "\n".join(report.summary_lines())
+    claude = next(c for c in report.checks if c.name == "claude-projects")
+    assert claude.ok
+    assert "session" in claude.detail
+    assert claude.fix and "--claude-latest" in claude.fix
+
+
+def test_export_import_roundtrip(workspace: Path, tmp_path: Path) -> None:
+    from failpack.commands_export import cmd_export
+    from failpack.commands_import import cmd_import
+
+    _capture_and_promote(workspace, pack_id="share-me")
+    archive = tmp_path / "share-me.tgz"
+    out = cmd_export("share-me", output=archive, root=workspace)
+    assert out.is_file()
+    assert out.stat().st_size > 0
+
+    # Import into a fresh workspace
+    other = tmp_path / "other"
+    cmd_init(other)
+    dest = cmd_import(archive, root=other)
+    assert dest.name == "share-me"
+    report = cmd_replay("share-me", root=other)
+    assert report.ok, "\n".join(report.summary_lines())
+
+
+def test_export_zip_and_import_rename(workspace: Path, tmp_path: Path) -> None:
+    from failpack.commands_export import cmd_export
+    from failpack.commands_import import cmd_import
+
+    _capture_and_promote(workspace, pack_id="zip-me")
+    archive = tmp_path / "zip-me.zip"
+    cmd_export("zip-me", output=archive, root=workspace)
+    dest = cmd_import(archive, root=workspace, rename="zip-me-copy")
+    assert dest.name == "zip-me-copy"
+    meta = read_meta(dest)
+    assert meta["id"] == "zip-me-copy"
+    assert cmd_replay("zip-me-copy", root=workspace).ok
+
+
+def test_import_collision_requires_force_or_rename(workspace: Path, tmp_path: Path) -> None:
+    from failpack.commands_export import cmd_export
+    from failpack.commands_import import cmd_import
+
+    _capture_and_promote(workspace, pack_id="collide")
+    archive = tmp_path / "collide.tgz"
+    cmd_export("collide", output=archive, root=workspace)
+    with pytest.raises(FileExistsError, match="--force"):
+        cmd_import(archive, root=workspace)
+    dest = cmd_import(archive, root=workspace, force=True)
+    assert dest.name == "collide"
+
+
+def test_export_requires_golden(workspace: Path, tmp_path: Path) -> None:
+    from failpack.commands_export import cmd_export
+
+    cmd_capture(FIXTURE, pack_id="not-golden", root=workspace)
+    with pytest.raises((ValueError, FileNotFoundError), match="[Pp]romote"):
+        cmd_export("not-golden", output=tmp_path / "x.tgz", root=workspace)
+
+
+def test_demo_end_to_end(workspace: Path) -> None:
+    from failpack.commands_demo import cmd_demo
+
+    report = cmd_demo(root=workspace, pack_id="demo-test", keep=True)
+    assert report.ok, "\n".join(report.summary_lines())
+    assert (workspace / ".failpack" / "packs" / "demo-test" / "assertions.yaml").is_file()
+    assert cmd_replay("demo-test", root=workspace).ok
+
+
+def test_demo_no_keep(workspace: Path) -> None:
+    from failpack.commands_demo import cmd_demo
+
+    report = cmd_demo(root=workspace, pack_id="demo-temp", keep=False, skip_break=True)
+    assert report.ok, "\n".join(report.summary_lines())
+    assert not (workspace / ".failpack" / "packs" / "demo-temp").exists()
+
+
+def test_cli_export_import_demo(
+    workspace: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _capture_and_promote(workspace, pack_id="cli-share")
+    archive = tmp_path / "cli-share.tgz"
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "export", "cli-share", "-o", str(archive)])
+    assert exc.value.code == 0
+    assert archive.is_file()
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "import", str(archive), "--rename", "cli-share-2"])
+    assert exc.value.code == 0
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "demo", "--id", "cli-demo", "--skip-break", "--no-keep"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "RESULT: OK" in out
+
+
+def test_help_mentions_demo_export_import() -> None:
+    parser = build_parser()
+    help_text = parser.format_help()
+    assert "demo" in help_text
+    assert "export" in help_text
+    assert "import" in help_text
+    names = set()
+    for action in parser._subparsers._group_actions:  # noqa: SLF001
+        names.update(action.choices.keys())
+    assert "demo" in names
+    assert "export" in names
+    assert "import" in names
+
+
+def test_bundled_demo_fixture_loads() -> None:
+    from failpack.commands_demo import demo_fixture_bytes
+
+    data = demo_fixture_bytes()
+    assert b"session_start" in data
+    assert len(data) > 100
+
+
+def test_readme_has_three_command_happy_path() -> None:
+    text = (REPO / "README.md").read_text(encoding="utf-8")
+    assert "failpack capture --claude-latest" in text
+    assert "failpack promote" in text
+    assert "failpack replay" in text
+    assert "failpack demo" in text
+    assert "0.6.0" in text
+    assert "Stet" in text
+    assert "AgentClash" in text

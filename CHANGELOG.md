@@ -5,6 +5,30 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-09-14
+
+### Added
+
+- **`failpack export <id> [-o pack.tgz]`** — share a golden pack as `.tgz` / `.tar.gz` /
+  `.zip` (assertions + expected + meta + artifacts + transcript + manifest).
+- **`failpack import <pack.tgz>`** — restore into `.failpack/packs/` with id collision
+  handling (`--force` overwrite, `--rename <id>`).
+- **`failpack demo`** — one-command five-minute wow path (bundled fixture) so
+  `pip install failpack && failpack demo` works without a git checkout.
+- **`doctor`** reports whether `~/.claude/projects` exists and how many session
+  `*.jsonl` files are present; tips `capture --claude-latest` when found.
+- README front matter: ≤3-command real-session happy path + `failpack demo`.
+
+### Changed
+
+- Version bump to **0.6.0**.
+- `examples/five-minute-demo.sh` expects **0.6.x** (still works; prefer `failpack demo`).
+
+### Notes
+
+- Zero coupling to Echo / Orin / titan-agent (or any live agent install).
+- No monetization in this release — open CLI stays the product.
+
 ## [0.5.0] — 2026-09-14
 
 ### Added
@@ -67,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Demo golden pack `demo-missing-import`.
 - Fixture-based Claude-Code-like JSONL parsing.
 
+[0.6.0]: https://github.com/JiangSkirk/failpack/releases/tag/v0.6.0
 [0.5.0]: https://github.com/JiangSkirk/failpack/releases/tag/v0.5.0
 [0.4.0]: https://github.com/JiangSkirk/failpack/releases/tag/v0.4.0
 [0.3.0]: https://github.com/JiangSkirk/failpack/releases/tag/v0.3.0
