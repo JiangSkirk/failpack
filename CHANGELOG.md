@@ -5,6 +5,32 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-09-14
+
+### Added
+
+- **`failpack doctor --score` soft `cursor_projects` check** — same spirit as
+  Claude: optional `~/.cursor/projects` row (+5 pts). Missing Cursor/Claude
+  does **not** break CI (fixtures / `failpack demo` still reach **90/100**).
+- Replay / explain **`next:`** tip on FAIL — one-line FAIL→FIX loop:
+  `explain` · `promote --suggest` · `re-promote`.
+- GitHub Release **`v1.1.0`** + [`RELEASE_NOTES_1.1.0.md`](RELEASE_NOTES_1.1.0.md).
+- Action docs / examples / `init --ci` pin **`@v1.1.0`** (keep `@main` as
+  alternative).
+
+### Changed
+
+- Version bump to **1.2.0**.
+- Soft agent score split: `claude_projects` **5** + `cursor_projects` **5**
+  (was Claude-only 10).
+- [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md) —
+  clean-temp-dir realism (0 packs before capture; `promote --suggest
+  demo-five-minute`; PATH tip; Cursor score row; `next:` tip).
+
+### Notes
+
+- Zero coupling to Echo / Orin / titan-agent. No monetization / PyPI publish.
+
 ## [1.1.0] — 2026-09-14
 
 ### Added

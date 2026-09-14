@@ -9,7 +9,10 @@ from failpack.paths import FAILPACK_DIR, PACKS_DIR
 CI_WORKFLOW_REL = Path(".github") / "workflows" / "failpack.yml"
 
 CI_WORKFLOW_TEMPLATE = """\
-# Written by `failpack init --ci`. Pin the action to a tag/SHA in real use.
+# Written by `failpack init --ci`.
+# Prefer pinning the action to a release tag (stable CLI):
+#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.1.0
+# @main tracks the tip of the default branch (may move).
 name: FailPack regression replay
 
 on:
@@ -22,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.1.0
         with:
           # This repo: install from the checkout. Other repos: omit install-from
           # (defaults to git+https://github.com/JiangSkirk/failpack.git).
@@ -34,13 +37,13 @@ jobs:
 WORKSPACE_README = """\
 # FailPack workspace
 
-**Tip:** try `failpack demo` for a five-minute wow path, or capture a real Claude
-Code session with `failpack capture --claude-latest --id my-failure`.
+**Tip:** try `failpack demo` for a five-minute wow path, or capture a real session
+with `failpack capture --claude-latest` / `--cursor-latest`.
 
 Packs live under `packs/<id>/`.
 
 - `failpack demo` — one-command five-minute wow path
-- `failpack doctor` — check env + this layout (+ Claude projects tip)
+- `failpack doctor [--score]` — check env + layout (+ Claude/Cursor soft tips)
 - `failpack list` — list packs (id, status, exit_code, promoted_at)
 - `failpack show <id>` — pretty inspect (status, asserts, artifacts; `--json`)
 - `failpack status <id>` — meta + assertion summary
@@ -57,6 +60,7 @@ Packs live under `packs/<id>/`.
 - `failpack export <id>` / `failpack import <pack.tgz>` — share packs
 - `failpack watch <transcript>` — capture → promote → replay (local)
 - `failpack replay <id>` / `failpack replay --all` — verify assertions in CI
+- `failpack explain <id>` — short FAIL story (+ next: promote --suggest / re-promote)
 - `failpack completion bash|zsh` — print shell completion script
 - `failpack migrate` — stamp pack schema_version (no-op if current)
 """

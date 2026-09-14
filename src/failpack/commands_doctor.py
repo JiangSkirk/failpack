@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from failpack.commands_capture import claude_projects_dir
+from failpack.commands_capture import claude_projects_dir, cursor_projects_dir
 from failpack.commands_list import list_packs
 from failpack.paths import FAILPACK_DIR, PACKS_DIR, failpack_dir, find_root
 
@@ -14,10 +14,13 @@ from failpack.paths import FAILPACK_DIR, PACKS_DIR, failpack_dir, find_root
 MIN_PYTHON = (3, 11)
 
 # Readiness score weights (sum = 100). Checklist items for ``--score``.
+# Agent paths (claude/cursor) are soft: missing either does not break CI —
+# fixtures + ``failpack demo`` still reach 90/100.
 SCORE_WEIGHTS: dict[str, int] = {
     "python": 25,
     "packs_dir": 25,
-    "claude_projects": 10,
+    "claude_projects": 5,
+    "cursor_projects": 5,
     "lint": 20,
     "golden_count": 20,
 }
@@ -119,7 +122,7 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
             f"not found ({projects}) — optional",
             fix=(
                 "Install/use Claude Code, or capture a fixture / exported JSONL. "
-                "Try: failpack demo"
+                "Try: failpack demo · or: failpack capture --cursor-latest"
             ),
         )
 
@@ -141,6 +144,49 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
         fix=(
             f"Newest: {newest.name} — try: "
             "failpack capture --claude-latest --id my-failure"
+        ),
+    )
+
+
+def _check_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
+    """Report whether ``~/.cursor/projects`` exists (soft / optional).
+
+    Missing Cursor transcripts is **not** a failure — fixtures and Claude
+    paths still work. When sessions are found, tip ``capture --cursor-latest``.
+    """
+    projects = cursor_projects_dir(home=home)
+    if not projects.is_dir():
+        return DoctorCheck(
+            "cursor-projects",
+            True,
+            f"not found ({projects}) — optional",
+            fix=(
+                "Use Cursor agent transcripts, or capture a fixture / exported JSONL. "
+                "Try: failpack demo · or: failpack capture --claude-latest"
+            ),
+        )
+
+    sessions = [p for p in projects.rglob("*.jsonl") if p.is_file()]
+    n = len(sessions)
+    if n == 0:
+        return DoctorCheck(
+            "cursor-projects",
+            True,
+            f"found at {projects} (0 agent *.jsonl)",
+            fix=(
+                "After a Cursor agent run, try: "
+                "failpack capture --cursor-latest --id my-failure"
+            ),
+        )
+
+    newest = max(sessions, key=lambda p: p.stat().st_mtime)
+    return DoctorCheck(
+        "cursor-projects",
+        True,
+        f"found at {projects} ({n} transcript{'s' if n != 1 else ''})",
+        fix=(
+            f"Newest: {newest.name} — try: "
+            "failpack capture --cursor-latest --id my-failure"
         ),
     )
 
@@ -196,8 +242,8 @@ def _check_layout(root: Path | None) -> list[DoctorCheck]:
                 True,
                 "0 packs — capture a transcript to get started",
                 fix=(
-                    "failpack capture --claude-latest --id my-failure   "
-                    "# or: failpack demo"
+                    "failpack demo   # or: failpack capture --claude-latest / "
+                    "--cursor-latest --id my-failure"
                 ),
             )
         )
@@ -241,37 +287,66 @@ def _score_packs_dir(root: Path | None) -> DoctorCheck:
     )
 
 
-def _score_claude_projects(*, home: Path | None = None) -> DoctorCheck:
-    w = SCORE_WEIGHTS["claude_projects"]
-    projects = claude_projects_dir(home=home)
+def _score_agent_projects(
+    name: str,
+    projects: Path,
+    *,
+    empty_fix: str,
+    missing_fix: str,
+) -> DoctorCheck:
+    """Soft score row for an optional agent projects tree (Claude or Cursor)."""
+    w = SCORE_WEIGHTS[name]
     if not projects.is_dir():
         return DoctorCheck(
-            "claude_projects",
+            name,
             False,
             "not found (optional — fixtures / demo still work)",
-            fix="Install Claude Code, or skip and use: failpack demo",
+            fix=missing_fix,
             points=0,
             max_points=w,
         )
     sessions = [p for p in projects.rglob("*.jsonl") if p.is_file()]
     n = len(sessions)
     if n == 0:
-        # Directory exists but empty — half credit
-        half = w // 2
+        # Directory exists but empty — half credit (floor at 1 when w>=2)
+        half = max(1, w // 2) if w >= 2 else 0
         return DoctorCheck(
-            "claude_projects",
+            name,
             True,
             f"found ({projects}) with 0 sessions",
-            fix="After a Claude Code run: failpack capture --claude-latest --id my-failure",
+            fix=empty_fix,
             points=half,
             max_points=w,
         )
+    label = "session" if "claude" in name else "transcript"
     return DoctorCheck(
-        "claude_projects",
+        name,
         True,
-        f"found ({n} session{'s' if n != 1 else ''})",
+        f"found ({n} {label}{'s' if n != 1 else ''})",
         points=w,
         max_points=w,
+    )
+
+
+def _score_claude_projects(*, home: Path | None = None) -> DoctorCheck:
+    return _score_agent_projects(
+        "claude_projects",
+        claude_projects_dir(home=home),
+        empty_fix=(
+            "After a Claude Code run: failpack capture --claude-latest --id my-failure"
+        ),
+        missing_fix="Install Claude Code, or skip and use: failpack demo",
+    )
+
+
+def _score_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
+    return _score_agent_projects(
+        "cursor_projects",
+        cursor_projects_dir(home=home),
+        empty_fix=(
+            "After a Cursor agent run: failpack capture --cursor-latest --id my-failure"
+        ),
+        missing_fix="Use Cursor, or skip and use: failpack demo",
     )
 
 
@@ -356,6 +431,7 @@ def compute_score(
         _score_python(py),
         _score_packs_dir(root),
         _score_claude_projects(home=home),
+        _score_cursor_projects(home=home),
         _score_lint(root),
         _score_golden_count(root),
     ]
@@ -373,6 +449,7 @@ def cmd_doctor(
     report.checks.append(_check_python())
     report.checks.append(_check_pyyaml())
     report.checks.append(_check_claude_projects(home=home))
+    report.checks.append(_check_cursor_projects(home=home))
     report.checks.extend(_check_layout(root))
     if score:
         report.score, report.checklist = compute_score(

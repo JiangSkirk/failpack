@@ -364,6 +364,7 @@ def test_doctor_ok_on_repo() -> None:
     assert "python" in names
     assert "pyyaml" in names
     assert "claude-projects" in names
+    assert "cursor-projects" in names
     assert "layout" in names
     assert "packs" in names
     packs = next(c for c in report.checks if c.name == "packs")
@@ -376,13 +377,14 @@ def test_doctor_score_on_repo() -> None:
     assert report.score is not None
     assert 0 <= report.score <= 100
     # Repo has python + packs_dir + lint + goldens → at least 90
-    # (claude_projects may be 0 without ~/.claude)
+    # (claude_projects / cursor_projects may be 0 without agent homes)
     assert report.score >= 90
     names = [c.name for c in report.checklist]
     assert names == [
         "python",
         "packs_dir",
         "claude_projects",
+        "cursor_projects",
         "lint",
         "golden_count",
     ]
@@ -392,6 +394,8 @@ def test_doctor_score_on_repo() -> None:
     assert by_name["lint"].ok and by_name["lint"].points == 20
     assert by_name["golden_count"].ok and by_name["golden_count"].points == 20
     assert by_name["golden_count"].detail.startswith("4 golden")
+    assert by_name["claude_projects"].max_points == 5
+    assert by_name["cursor_projects"].max_points == 5
     text = "\n".join(report.summary_lines(with_score=True))
     assert "READINESS SCORE:" in text
     assert "checklist:" in text
@@ -399,7 +403,7 @@ def test_doctor_score_on_repo() -> None:
 
 
 def test_doctor_score_empty_workspace(workspace: Path, tmp_path: Path) -> None:
-    empty_home = tmp_path / "no-claude"
+    empty_home = tmp_path / "no-agents"
     empty_home.mkdir()
     report = cmd_doctor(workspace, home=empty_home, score=True)
     assert report.score is not None
@@ -407,6 +411,7 @@ def test_doctor_score_empty_workspace(workspace: Path, tmp_path: Path) -> None:
     assert by_name["python"].points == 25
     assert by_name["packs_dir"].points == 25
     assert by_name["claude_projects"].points == 0
+    assert by_name["cursor_projects"].points == 0
     assert by_name["lint"].ok  # no packs → PASS with 0 checked
     assert by_name["lint"].points == 20
     assert by_name["golden_count"].points == 0
@@ -426,6 +431,8 @@ def test_doctor_score_missing_layout(tmp_path: Path) -> None:
     assert by_name["lint"].points == 0
     assert by_name["golden_count"].points == 0
     assert by_name["python"].points == 25
+    assert by_name["claude_projects"].points == 0
+    assert by_name["cursor_projects"].points == 0
     assert report.score == 25
 
 
@@ -542,7 +549,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_1_0() -> None:
-    assert __version__ == "1.1.0"
+    assert __version__ == "1.2.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -663,10 +670,13 @@ def test_init_ci_writes_workflow(tmp_path: Path) -> None:
     text = workflow.read_text(encoding="utf-8")
     assert "failpack-replay" in text
     assert "JiangSkirk/failpack" in text
+    assert "@v1.1.0" in text
     tip = (fp / "README.md").read_text(encoding="utf-8")
     assert "failpack demo" in tip
     assert "--claude-latest" in tip
+    assert "--cursor-latest" in tip
     assert "failpack show" in tip
+    assert "promote --suggest" in tip
     # Idempotent: second init --ci does not clobber
     workflow.write_text("# custom\n", encoding="utf-8")
     _, again = cmd_init(tmp_path, ci=True)
@@ -738,6 +748,8 @@ def test_replay_all_skips_non_golden_and_fails_on_broken(workspace: Path) -> Non
     assert f"failed packs: {DEMO_ID}" in summary
     assert "re-promote" in summary
     assert "failpack explain" in summary
+    assert "promote --suggest" in summary
+    assert f"next: failpack explain {DEMO_ID}" in summary
     assert "STORY:" in summary
 
 
@@ -766,11 +778,14 @@ def test_explain_fail_and_pass(workspace: Path) -> None:
     assert "Next:" in story
     assert "re-promote explain-me" in story
     assert "RESULT: FAIL" in story
+    assert "next: failpack promote --suggest explain-me" in story
 
     # omit id → explain every failing golden
     all_fail = cmd_explain(root=workspace)
     assert not all_fail.ok
-    assert "explain-me" in "\n".join(all_fail.summary_lines())
+    all_text = "\n".join(all_fail.summary_lines())
+    assert "explain-me" in all_text
+    assert "next: failpack promote --suggest" in all_text
 
 
 def test_cli_explain(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -960,15 +975,24 @@ def test_examples_docs_exist() -> None:
     assert "git+https://github.com/JiangSkirk/failpack.git" in walk_body
     assert "doctor --score" in walk_body
     assert "failpack demo" in walk_body
+    assert "demo-five-minute" in walk_body
+    assert "promote --suggest demo-five-minute" in walk_body
+    assert "cursor-projects" in walk_body
+    assert "next: failpack explain" in walk_body
+    assert "~/.local/bin" in walk_body
+    assert "RELEASE_NOTES_1.1.0" in walk_body
 
 
 def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.2.0" in changelog
     assert "1.1.0" in changelog
     assert "1.0.0" in changelog
     assert "doctor --score" in changelog
+    assert "cursor_projects" in changelog
+    assert "next:" in changelog
     assert "--suggest" in changelog
     assert "--cursor-latest" in changelog
     assert "0.9.0" in changelog
@@ -989,6 +1013,10 @@ def test_doctor_claude_projects_missing_home(tmp_path: Path, workspace: Path) ->
     assert claude.ok
     assert "not found" in claude.detail
     assert claude.fix and "demo" in claude.fix
+    cursor = next(c for c in report.checks if c.name == "cursor-projects")
+    assert cursor.ok
+    assert "not found" in cursor.detail
+    assert cursor.fix and "demo" in cursor.fix
 
 
 def test_doctor_claude_projects_with_sessions(tmp_path: Path, workspace: Path) -> None:
@@ -999,6 +1027,23 @@ def test_doctor_claude_projects_with_sessions(tmp_path: Path, workspace: Path) -
     assert claude.ok
     assert "session" in claude.detail
     assert claude.fix and "--claude-latest" in claude.fix
+
+
+def test_doctor_cursor_projects_with_sessions(tmp_path: Path, workspace: Path) -> None:
+    home = _fake_cursor_home(tmp_path)
+    _capture_and_promote(workspace, pack_id="cursor-score-pack")
+    report = cmd_doctor(workspace, home=home, score=True)
+    assert report.ok, "\n".join(report.summary_lines())
+    cursor = next(c for c in report.checks if c.name == "cursor-projects")
+    assert cursor.ok
+    assert "transcript" in cursor.detail
+    assert cursor.fix and "--cursor-latest" in cursor.fix
+    by_name = {c.name: c for c in report.checklist}
+    assert by_name["cursor_projects"].points == 5
+    assert by_name["claude_projects"].points == 0
+    # Soft Cursor points only — CI without Claude still healthy
+    assert report.score is not None
+    assert report.score == 95
 
 
 def test_export_import_roundtrip(workspace: Path, tmp_path: Path) -> None:
@@ -1127,6 +1172,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
+    assert "1.2.0" in text
     assert "1.1.0" in text
     assert "1.0.0" in text
     assert "doctor --score" in text
@@ -1141,19 +1187,29 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "bash_output_contains" in text
     assert "--suggest" in text
     assert "--cursor-latest" in text
+    assert "cursor_projects" in text
     assert "STRANGER_WALKTHROUGH" in text
     assert "badge.svg" in text
+    assert "@v1.1.0" in text
     assert "Stet" in text
     assert "AgentClash" in text
     assert (REPO / "docs" / "PACKS.md").is_file()
     packs = (REPO / "docs" / "PACKS.md").read_text(encoding="utf-8")
     assert "demo-missing-import" in packs
+    assert (REPO / "RELEASE_NOTES_1.1.0.md").is_file()
+    notes = (REPO / "RELEASE_NOTES_1.1.0.md").read_text(encoding="utf-8")
+    assert "1.1.0" in notes
+    assert "--suggest" in notes
     assert (REPO / "RELEASE_NOTES_1.0.0.md").is_file()
-    notes = (REPO / "RELEASE_NOTES_1.0.0.md").read_text(encoding="utf-8")
-    assert "1.0.0" in notes
-    assert "doctor --score" in notes
     assert "demo-tool-denied" in packs
     assert "demo-five-minute" in packs
+    action_readme = (REPO / ".github" / "actions" / "failpack-replay" / "README.md").read_text(
+        encoding="utf-8"
+    )
+    assert "@v1.1.0" in action_readme
+    assert "@main" in action_readme
+    other_ci = (REPO / "examples" / "other-repo-ci.yml").read_text(encoding="utf-8")
+    assert "@v1.1.0" in other_ci
 
 
 def test_rm_refuses_golden_without_force(workspace: Path) -> None:
