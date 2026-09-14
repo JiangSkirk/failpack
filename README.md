@@ -24,13 +24,15 @@ pip install -e ".[dev]"
 Then confirm:
 
 ```bash
-failpack --version
+failpack --version   # → failpack 0.3.0
 failpack doctor
 ```
 
 `failpack doctor` checks Python version, PyYAML, `.failpack/` layout, and pack counts, and prints fixes when something is missing.
 
-## What you get (v0.2)
+Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
+
+## What you get (v0.3)
 
 | Command | What it does |
 |---|---|
@@ -42,11 +44,15 @@ failpack doctor
 | `failpack promote <id>` | Mark golden + write `assertions.yaml` |
 | `failpack replay <id>` | Verify assertions; **exit 0** on pass, **non-zero** on fail |
 | `failpack replay --all` | Replay every golden pack; **exit non-zero** if any fail |
+| `failpack replay … --json` | Machine-readable JSON (same exit codes) |
+
+On failure, replay prints **which check**, **expected vs actual**, and a **one-line hint** (e.g. `re-promote after intentional change` / `artifact drifted — inspect path`).
 
 Shipped golden packs:
 
 - **`demo-missing-import`** — agent forgot an import; tests fail with `NameError`
 - **`demo-wrong-test-cmd`** — agent ran pytest on a missing file (`exit_code=4`)
+- **`demo-permission-denied`** — agent wrote to `/etc/…` and hit `PermissionError` (`exit_code=13`)
 
 ## Quickstart
 
@@ -57,6 +63,12 @@ failpack doctor
 failpack list
 failpack replay --all                 # exits 0 when all golden packs pass
 failpack status demo-missing-import
+```
+
+Five-minute walkthrough (capture → promote → replay → intentional break → restore):
+
+```bash
+./examples/five-minute-demo.sh
 ```
 
 ### Capture your own failure
@@ -81,13 +93,23 @@ failpack capture --glob 'fixtures/*.jsonl' --id my-failure
 
 failpack promote my-failure
 failpack replay my-failure
+failpack replay my-failure --json   # machine output
 ```
 
 Break a golden assertion (or mutate an artifact under `.failpack/packs/<id>/artifacts/`) and `failpack replay` exits non-zero — that is the CI signal.
 
-### CI
+### CI (other repos)
 
-See [`.github/workflows/failpack-replay.yml`](.github/workflows/failpack-replay.yml): install → doctor → pytest → `failpack replay --all`.
+Use the composite action with one line:
+
+```yaml
+- uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
+```
+
+Full example: [`examples/other-repo-ci.yml`](examples/other-repo-ci.yml).  
+Action source: [`.github/actions/failpack-replay`](.github/actions/failpack-replay).
+
+This repo's workflow dogfoods the same action (see [`.github/workflows/failpack-replay.yml`](.github/workflows/failpack-replay.yml)).
 
 ## Pack layout
 
@@ -110,19 +132,6 @@ Assertions cover:
 
 Older packs without `min_events` / `glob_fingerprint` still replay.
 
-## How money works later
-
-Teams pay for **private packs** and a **team dashboard**, not for the open CLI core.
-
-| Tier | Price (narrative) | What you get |
-|---|---|---|
-| Personal | **$19**/mo | Private packs, sync, basic history |
-| Team | **$79–149**/mo | Shared packs, dashboard, seat controls |
-
-Checkout / MoR: plan on **Creem** or **Paddle** (merchant of record). **Do not assume Polar works for mainland China payout** — pick a MoR that can actually settle to your bank/region.
-
-Details and landing copy: [`MONETIZATION.md`](MONETIZATION.md).
-
 ## Non-goals
 
 - **Not Stet** — FailPack does not freeze or snapshot whole agent runtimes.
@@ -136,6 +145,7 @@ pip install -e ".[dev]"
 pytest -q
 failpack --help
 failpack doctor
+failpack replay --all --json
 ```
 
 Requires Python 3.11+.

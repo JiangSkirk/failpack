@@ -1,0 +1,29 @@
+# Example: use FailPack's composite action from another repository.
+#
+# Copy this file to .github/workflows/failpack.yml in a repo that vendors
+# (or syncs) golden packs under .failpack/packs/.
+#
+# One-liner style (pin to a tag or SHA in real use):
+#
+#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v0.3.0
+
+name: FailPack regression replay
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  failpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install FailPack from GitHub and replay every golden pack.
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
+        with:
+          # Optional overrides:
+          # python-version: "3.12"
+          # install-from: "git+https://github.com/JiangSkirk/failpack.git"
+          # run-doctor: "true"
+          # json: "false"
