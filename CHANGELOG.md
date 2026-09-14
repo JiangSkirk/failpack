@@ -18,10 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- [`site/index.html`](site/index.html) Quickstart leads with
-  `pip install "git+…"` + `failpack demo --fast` (aligned with README /
-  LANDING). Keeps Privacy/Terms, waitlist/email, draft tone (no fake social
-  proof, no live checkout links).
+- [`site/index.html`](site/index.html) Quickstart shows **both**
+  `pip install failpack` (once on PyPI) **and** the git install fallback, then
+  `failpack demo --fast`. Keeps Privacy/Terms, waitlist/email, draft tone.
+  Adds a clear **Checkout (placeholder)** CTA section (disabled “coming soon”
+  buttons — **no fake pay links**).
+- README ~60s path + Install section mirror the dual install story.
 - README links the Pages homepage; QUALITY_BAR marks the homepage nice-to-have
   as workflow-shipped (honest enable step if still pending).
 - Version bump to **1.5.5**.
@@ -31,8 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Quality-freeze thickening only. Action pin stays **`@v1.5.0`** (no Action
   behavior change).
-- Zero coupling to Echo / Orin / titan-agent. No monetization / KYC / live
-  checkout. No PyPI upload without a token in env.
+- Zero coupling to Echo / Orin / titan-agent. Monetization copy is draft-site
+  pricing + checkout **placeholder** only — no live Creem links / no KYC in
+  this cut. No PyPI upload without a token in env.
 
 ## [1.5.4] — 2026-09-14
 

@@ -18,7 +18,12 @@ Not a security gate. A boring, repeatable CI signal.
 ## ~60-second path
 
 ```bash
+# once on PyPI (preferred when published)
+pip install failpack
+
+# works today — git fallback
 pip install "git+https://github.com/JiangSkirk/failpack.git"
+
 failpack demo --fast
 ```
 
@@ -39,10 +44,13 @@ failpack diff my-failure             # expected vs actual (no full replay)
 
 ## Install
 
-Requires Python **3.11+**. **No PyPI token / publish required** — install from GitHub:
+Requires Python **3.11+**.
 
 ```bash
-# primary (works today, no PyPI)
+# preferred once published to PyPI
+pip install failpack
+
+# git fallback (works today; no PyPI token required)
 pip install "git+https://github.com/JiangSkirk/failpack.git"
 
 # from a local checkout (editable + tests)

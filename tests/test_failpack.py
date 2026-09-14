@@ -1435,9 +1435,15 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo --fast" in landing
     site = (REPO / "site" / "index.html").read_text(encoding="utf-8")
     assert "failpack demo --fast" in site
+    assert "pip install failpack" in site
+    assert 'git+https://github.com/JiangSkirk/failpack.git' in site
+    assert "Checkout (placeholder)" in site or "checkout" in site.lower()
+    assert "coming soon" in site.lower()
     assert "privacy.html" in site
     assert "terms.html" in site
     assert "8725598a@gmail.com" in site
+    assert "pip install failpack" in text
+    assert 'git+https://github.com/JiangSkirk/failpack.git' in text
     assert (REPO / ".github" / "workflows" / "pages.yml").is_file()
     pages_wf = (REPO / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
     assert "upload-pages-artifact" in pages_wf
@@ -1449,6 +1455,8 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "@v1.5.0" in notes155
     assert "jiangskirk.github.io/failpack" in notes155
     assert "demo --fast" in notes155
+    assert "pip install failpack" in notes155
+    assert "placeholder" in notes155.lower()
     assert (REPO / "RELEASE_NOTES_1.5.4.md").is_file()
     notes154 = (REPO / "RELEASE_NOTES_1.5.4.md").read_text(encoding="utf-8")
     assert "1.5.4" in notes154

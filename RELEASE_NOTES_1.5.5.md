@@ -11,7 +11,12 @@ current wow path (`failpack demo --fast`). Action pin stays **`@v1.5.0`**.
 ## Install
 
 ```bash
+# once on PyPI (preferred when published)
+pip install failpack
+
+# works today — git fallback
 pip install "git+https://github.com/JiangSkirk/failpack.git"
+
 failpack demo --fast
 ```
 
@@ -38,12 +43,15 @@ Requires Python **3.11+**.
   (GitHub Pages owner casing is lowercase). If the site is still dark after
   merge: **Settings → Pages → Build and deployment → Source: GitHub Actions**,
   then re-run the **Deploy GitHub Pages** workflow (or push a `site/` change).
+- Site **Checkout (placeholder)** CTA under Pricing — disabled “coming soon”
+  buttons; waitlist email until Creem KYC. **No fake pay links.**
 
 ### Changed
 
 - [`site/index.html`](https://github.com/JiangSkirk/failpack/blob/v1.5.5/site/index.html)
-  Quickstart leads with `pip install "git+…"` + `failpack demo --fast`.
-  Privacy / Terms / waitlist email kept; draft tone; no invented checkout.
+  Quickstart shows `pip install failpack` (once on PyPI) **and** the git
+  fallback, then `failpack demo --fast`. Privacy / Terms / waitlist kept.
+- README dual-install story mirrors the site.
 - README links the Pages landing; QUALITY_BAR homepage nice-to-have marked
   workflow-shipped (honest enable step if still pending).
 - Version bump to **1.5.5**.
@@ -83,8 +91,9 @@ alternative.
 
 ## Non-goals for 1.5.5
 
-- No monetization / checkout / KYC / paid tiers in-tree beyond draft site copy
-- No PyPI upload without a token in env
+- No **live** Creem checkout / KYC / pay links (placeholder CTA only)
+- No PyPI upload without a token in env (`pip install failpack` documented as
+  preferred once published; git fallback works today)
 - No coupling to Echo, Orin, titan-agent, or any live agent install
 - No Action pin retarget
 - No invented “user” packs; unpaid stranger walkthrough still open
