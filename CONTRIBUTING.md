@@ -15,7 +15,7 @@ Requires Python **3.11+**.
 
 ```bash
 pip install -e ".[dev]"
-failpack --version   # → failpack 1.5.6
+failpack --version   # → failpack 1.5.7
 failpack doctor --score
 failpack demo --fast         # ~60s stranger wow path (recommended)
 failpack demo --skip-break   # optional full local wow path without break
@@ -57,13 +57,19 @@ Claude Code sessions typically live at:
 ```
 
 `failpack capture --claude-latest` picks the newest `*.jsonl` under that tree.
-In tests, build a temporary home:
+In tests / CI, build a temporary home (never scan a real `~/.claude`):
 
 ```python
 home = tmp_path / "fake-home"
 (home / ".claude" / "projects" / "proj").mkdir(parents=True)
 # write *.jsonl under proj, then:
 cmd_capture(claude_latest=True, home=home, ...)
+```
+
+Stranger/CI shell proof (same idea):
+
+```bash
+./examples/claude-latest-hermetic.sh
 ```
 
 ### Cursor-ish paths (optional, safe docs only)

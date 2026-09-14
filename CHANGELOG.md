@@ -5,6 +5,42 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.7] — 2026-09-14
+
+### Added
+
+- **Hermetic Claude one-shot** — pytest e2e covers fake HOME +
+  `fixtures/claude-code-failure.jsonl` → `capture --claude-latest` → promote →
+  replay (no live Claude / no invented “user” packs).
+- [`examples/claude-latest-hermetic.sh`](examples/claude-latest-hermetic.sh) —
+  one-command stranger/CI proof of the same path.
+- Doctor / capture / CLI tips when no Claude sessions: try `demo --fast` or
+  the hermetic fixture script first.
+- GitHub Release **`v1.5.7`** + [`RELEASE_NOTES_1.5.7.md`](RELEASE_NOTES_1.5.7.md).
+
+### Changed
+
+- [`examples/claude-latest-demo.md`](examples/claude-latest-demo.md) +
+  [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md) lead
+  with hermetic proof, then real-machine `--claude-latest`.
+- Capture success tip: `promote --suggest --write` applies (plain promote after
+  that is redundant). Same-id re-capture error tips `--force` or a new `--id`.
+- Doctor `--score`: empty agent projects dir detail notes **+2/5 half-credit**.
+- Hermetic docs spell `~/.claude/projects/<name>/*.jsonl` (demo/hermetic-demo).
+- [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md): hermetic Claude one-shot ✅;
+  Pages note stays “if 404, flip Source=GitHub Actions” (do not claim live).
+  Unpaid stranger walkthrough + real-user packs still open.
+- Version bump to **1.5.7**.
+- Docs / walkthrough / site version samples → **1.5.7**.
+
+### Notes
+
+- Quality cut for the Claude wow path. Action pin stays **`@v1.5.0`** (no
+  Action behavior change). **Do not re-upload to PyPI from this cut.**
+- Zero coupling to Echo / Orin / titan-agent. No live Creem / KYC / pay links.
+  Remaining wow gaps: real-user packs, unpaid stranger walkthrough, Pages
+  enable (human Settings flip if still dark).
+
 ## [1.5.6] — 2026-09-14
 
 ### Changed

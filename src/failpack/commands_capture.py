@@ -70,8 +70,9 @@ def find_claude_latest(*, home: Path | None = None) -> Path:
             "One-shot after a Claude Code run needs ~/.claude/projects/<project>/*.jsonl.\n"
             "  • Run a Claude Code session that fails, then:\n"
             "      failpack capture --claude-latest --id my-failure\n"
-            "  • Or skip agents and try the ~60s wow path:\n"
-            "      failpack demo --fast\n"
+            "  • No sessions yet? Prove the path hermetically (fake HOME + fixture):\n"
+            "      ./examples/claude-latest-hermetic.sh\n"
+            "    or: failpack demo --fast\n"
             "  • Or pass a transcript path / --stdin."
         )
     try:
@@ -81,7 +82,9 @@ def find_claude_latest(*, home: Path | None = None) -> Path:
             f"No Claude Code *.jsonl sessions under {projects}.\n"
             "One-shot: finish a Claude Code run, then:\n"
             "  failpack capture --claude-latest --id my-failure\n"
-            "Or: failpack demo --fast"
+            "No sessions yet? Try the fixture path first:\n"
+            "  ./examples/claude-latest-hermetic.sh\n"
+            "  # or: failpack demo --fast"
         ) from exc
 
 
@@ -291,7 +294,9 @@ def cmd_capture(
         if pack.exists():
             if not force:
                 raise FileExistsError(
-                    f"Pack '{pid}' already exists at {pack}. Use --force to overwrite."
+                    f"Pack '{pid}' already exists at {pack}.\n"
+                    f"  • Overwrite: failpack capture … --id {pid} --force\n"
+                    f"  • Or pick a new id: failpack capture … --id {pid}-2"
                 )
             shutil.rmtree(pack)
 

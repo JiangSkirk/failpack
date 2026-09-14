@@ -13,10 +13,10 @@ repo checkout). Target: **about a minute** to first PASS after install.
 $ pip install failpack
 Collecting failpack
   …
-Successfully installed failpack-1.5.6 …
+Successfully installed failpack-1.5.7 …
 
 $ failpack --version
-failpack 1.5.6
+failpack 1.5.7
 ```
 
 Git fallback (optional):
@@ -32,7 +32,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.5.6
+failpack 1.5.7
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -45,7 +45,7 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --fast
-failpack demo --fast  (~60s wow)  ·  failpack 1.5.6
+failpack demo --fast  (~60s wow)  ·  failpack 1.5.7
 
 ==> 1/3  capture bundled fixture → 'demo-five-minute'
 Captured pack 'demo-five-minute' → …/.failpack/packs/demo-five-minute
@@ -73,7 +73,7 @@ failpack doctor
   [OK] python: …
   [OK] pyyaml: …
   [OK] claude-projects: not found (…) — optional
-         tip: After a Claude Code run: failpack capture --claude-latest --id my-failure  ·  or ~60s wow: failpack demo --fast  ·  or: failpack capture --cursor-latest
+         tip: No sessions yet — try: failpack demo --fast  ·  or prove Claude one-shot: ./examples/claude-latest-hermetic.sh (fake HOME + fixtures/claude-code-failure.jsonl)  ·  or after a Claude Code run: failpack capture --claude-latest --id my-failure
   [OK] cursor-projects: not found (…) — optional
   [OK] layout: .failpack/ + packs/ at …
   [OK] packs: 1 pack(s) (1 golden, 0 captured)
@@ -91,11 +91,12 @@ RESULT: OK
 
 Score hits **100/100** when both Claude Code (`~/.claude/projects`) and Cursor
 (`~/.cursor/projects`) session trees exist **with transcripts**. Either agent
-alone adds **+5** with sessions; an empty agent projects dir can add **+2**
-half-credit — so a clean CI-style host may show **90**, and a laptop with an
-empty `~/.cursor/projects` may show **92**. Neither agent is required —
-fixtures and `failpack demo --fast` are enough. Missing both still yields at
-least **90/100** (does not break).
+alone adds **+5** with sessions; an **empty** agent projects dir (0 `*.jsonl`)
+still adds **+2** half-credit on the score row (soft — not a failure). So a
+clean CI-style host may show **90**, and a laptop with an empty
+`~/.cursor/projects` may show **92**. Neither agent is required — fixtures and
+`failpack demo --fast` are enough. Missing both still yields at least
+**90/100** (does not break).
 
 ## 4) Forced FAIL → explain → diff
 
@@ -129,7 +130,44 @@ $ failpack list --json   # or: failpack packs --json
 ]
 ```
 
-## 5) Claude Code one-shot (when you have a real failure)
+## 5) Claude Code one-shot
+
+### 5a) Prove it hermetically (no live Claude Code)
+
+From a FailPack **checkout** — same discovery as a real laptop, fake HOME only:
+
+```bash
+$ cd /path/to/failpack
+$ ./examples/claude-latest-hermetic.sh
+==> hermetic Claude one-shot (HOME=/tmp/failpack-claude-hermetic.…)
+…
+Claude one-shot: newest session under ~/.claude/projects
+  using: …/session.jsonl
+Captured pack 'claude-hermetic' → …/.failpack/packs/claude-hermetic
+…
+RESULT: PASS
+```
+
+Or the manual fake-HOME dance (also covered in CI). Layout is always
+`~/.claude/projects/<name>/*.jsonl` — accept/hermetic demos use
+`projects/demo/session.jsonl` or `projects/hermetic-demo/session.jsonl`:
+
+```bash
+export HOME=/tmp/failpack-fake-home
+mkdir -p "$HOME/.claude/projects/demo"
+cp fixtures/claude-code-failure.jsonl "$HOME/.claude/projects/demo/session.jsonl"
+failpack capture --claude-latest --id from-fake-home --force
+failpack promote --suggest --write from-fake-home   # applies; no plain promote needed
+failpack replay from-fake-home
+```
+
+Re-running capture on the same id needs `--force` (or a new `--id`); the
+error tip spells both options.
+
+This is **not** a real-user pack — it is the stranger/CI proof that
+`--claude-latest` works without inventing fake “user” goldens.
+
+### 5b) Real failure (when you have Claude Code)
 
 After Claude Code fails a task once:
 
@@ -138,9 +176,9 @@ $ failpack capture --claude-latest --id my-failure
 Claude one-shot: newest session under ~/.claude/projects
   using: /home/you/.claude/projects/…/0192ef01-….jsonl
 Captured pack 'my-failure' → …/.failpack/packs/my-failure
-Next: failpack promote --suggest my-failure  ·  failpack promote --suggest --write my-failure  ·  failpack replay my-failure
+Next: failpack promote --suggest --write my-failure  (applies; --suggest alone previews)  ·  failpack replay my-failure
 
-$ failpack promote --suggest --write my-failure
+$ failpack promote --suggest --write my-failure   # enough — no plain promote needed
 $ failpack replay my-failure
 ```
 
@@ -171,10 +209,12 @@ failpack lint
 ## See also
 
 - [`five-minute-demo.sh`](five-minute-demo.sh) — delegates to `failpack demo`
+- [`claude-latest-hermetic.sh`](claude-latest-hermetic.sh) — fake-HOME Claude one-shot proof
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
 - [`../docs/SUPPORT.md`](../docs/SUPPORT.md) — GitHub Issues + email
-- [`../RELEASE_NOTES_1.5.6.md`](../RELEASE_NOTES_1.5.6.md) — tagged GitHub Release `v1.5.6`
+- [`../RELEASE_NOTES_1.5.7.md`](../RELEASE_NOTES_1.5.7.md) — tagged GitHub Release `v1.5.7`
+- [`../RELEASE_NOTES_1.5.6.md`](../RELEASE_NOTES_1.5.6.md) — prior Release `v1.5.6`
 - [`../RELEASE_NOTES_1.5.5.md`](../RELEASE_NOTES_1.5.5.md) — prior Release `v1.5.5`
 - [`../RELEASE_NOTES_1.5.4.md`](../RELEASE_NOTES_1.5.4.md) — prior Release `v1.5.4`
 - [`../RELEASE_NOTES_1.5.3.md`](../RELEASE_NOTES_1.5.3.md) — prior Release `v1.5.3`
@@ -183,3 +223,4 @@ failpack lint
 - [`../docs/QUALITY_BAR.md`](../docs/QUALITY_BAR.md) — honest sell-ready gaps
 - [`../CHANGELOG.md`](../CHANGELOG.md)
 - Landing (GitHub Pages): [https://jiangskirk.github.io/failpack/](https://jiangskirk.github.io/failpack/)
+  — if that URL 404s, flip Settings → Pages → Source: **GitHub Actions** (one-time)

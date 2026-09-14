@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.5.6-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.5.7-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** is regression memory for coding-agent failures.
 
@@ -33,7 +33,7 @@ failpack doctor --score              # 0–100 readiness + checklist
 failpack capture --claude-latest --id my-failure   # Claude Code one-shot
 failpack capture --cursor-latest --id cursor-fail
 failpack promote --suggest my-failure
-failpack promote --suggest --write my-failure
+failpack promote --suggest --write my-failure      # apply when they look right (enough)
 failpack replay my-failure
 failpack explain my-failure          # when something FAILs
 failpack diff my-failure             # expected vs actual (no full replay)
@@ -66,7 +66,7 @@ failpack demo --fast     # ~60s wow (recommended)
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.5.6
+failpack --version          # → failpack 1.5.7
 failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
 ```
 
@@ -175,6 +175,8 @@ Claude / Cursor latest magic paths (screenshots-as-text):
 ```bash
 # see examples/claude-latest-demo.md
 failpack capture --claude-latest --id my-failure
+# no Claude sessions yet? prove the path hermetically (checkout):
+#   ./examples/claude-latest-hermetic.sh
 # see examples/cursor-latest-demo.md (best-effort; fake HOME in tests)
 failpack capture --cursor-latest --id cursor-fail
 ```
@@ -401,7 +403,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.6.md`](RELEASE_NOTES_1.5.6.md) / [`RELEASE_NOTES_1.5.5.md`](RELEASE_NOTES_1.5.5.md) / [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.7.md`](RELEASE_NOTES_1.5.7.md) / [`RELEASE_NOTES_1.5.6.md`](RELEASE_NOTES_1.5.6.md) / [`RELEASE_NOTES_1.5.5.md`](RELEASE_NOTES_1.5.5.md) / [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 

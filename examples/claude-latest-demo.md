@@ -3,14 +3,44 @@
 Magic path: discover the newest Claude Code session under `~/.claude/projects`
 and turn it into a FailPack golden pack — no manual path hunting.
 
-> Tests and CI use a **fake HOME**. This doc shows the real-machine flow.
-> FailPack never requires a live agent install in the repo.
+## Prove it without a live Claude install (first-class)
 
-## One-shot loop (~a minute after a real failure)
+Strangers and CI should **not** invent fake “user” packs. Use a **fake HOME**
+plus the shipped fixture — same discovery path as a real laptop:
+
+```bash
+# from a FailPack checkout
+pip install -e ".[dev]"
+./examples/claude-latest-hermetic.sh
+```
+
+That script sets `HOME` to a temp dir, copies
+`fixtures/claude-code-failure.jsonl` under
+`~/.claude/projects/<name>/*.jsonl` (here
+`projects/hermetic-demo/session.jsonl`), then runs
+**capture --claude-latest → promote → replay**. Or do it by hand
+(layout is always `~/.claude/projects/<name>/*.jsonl` — accept used
+`projects/demo/session.jsonl`):
+
+```bash
+export HOME=/tmp/failpack-fake-home
+mkdir -p "$HOME/.claude/projects/demo"
+cp fixtures/claude-code-failure.jsonl "$HOME/.claude/projects/demo/session.jsonl"
+failpack capture --claude-latest --id from-fake-home --force
+failpack promote --suggest --write from-fake-home   # applies; plain promote not needed
+failpack replay from-fake-home
+```
+
+Re-capture the same id? Pass `--force` or pick a new `--id` — the error tip says both.
+
+Doctor tips the same path when no sessions exist (`demo --fast` / hermetic
+script first). FailPack never requires a live agent install in the repo.
+
+## Real-machine one-shot (~a minute after a real failure)
 
 ```bash
 failpack capture --claude-latest --id my-failure
-failpack promote --suggest --write my-failure
+failpack promote --suggest --write my-failure   # applies (enough — no plain promote needed)
 failpack replay my-failure
 ```
 
@@ -20,13 +50,14 @@ On capture success you should see:
 Claude one-shot: newest session under ~/.claude/projects
   using: /home/you/.claude/projects/…/0192ef01-….jsonl
 Captured pack 'my-failure' → …/.failpack/packs/my-failure
-Next: failpack promote --suggest my-failure  ·  failpack promote --suggest --write my-failure  ·  failpack replay my-failure
+Next: failpack promote --suggest --write my-failure  (applies; --suggest alone previews)  ·  failpack replay my-failure
 ```
 
 No Claude sessions yet? Doctor and the error message both tip:
 
 ```bash
-failpack demo --fast          # ~60s wow without an agent
+failpack demo --fast                    # ~60s wow without an agent
+./examples/claude-latest-hermetic.sh    # prove --claude-latest hermetically
 # or finish a Claude Code run, then retry --claude-latest
 ```
 
@@ -34,8 +65,8 @@ failpack demo --fast          # ~60s wow without an agent
 
 ```bash
 pip install -e ".[dev]"
-failpack --version    # failpack 1.5.6+
-failpack doctor       # tips --claude-latest when sessions exist
+failpack --version    # failpack 1.5.7+
+failpack doctor       # tips hermetic path when no sessions; --claude-latest when sessions exist
 failpack init         # if this repo isn't already initialized
 ```
 
@@ -83,8 +114,8 @@ demo-wrong-test-cmd    golden    4     2026-09-14T…
 
 ```bash
 $ failpack promote --suggest --write claude-latest-demo
-$ failpack promote claude-latest-demo   # or plain promote
 Promoted pack 'claude-latest-demo' to golden (…/assertions.yaml)
+# --suggest --write is enough; plain `promote` after that is redundant (idempotent)
 
 $ failpack replay claude-latest-demo
 failpack replay: claude-latest-demo
@@ -148,15 +179,9 @@ failpack capture ~/.cursor/projects --id cursor-fail
 
 No Cursor API coupling — same JSONL → pack path as Claude fixtures.
 
-## Fake-HOME tip for contributors
+## See also
 
-```bash
-# never point tests at a real ~/.claude
-export HOME=/tmp/failpack-fake-home
-mkdir -p "$HOME/.claude/projects/demo"
-cp fixtures/claude-code-failure.jsonl "$HOME/.claude/projects/demo/session.jsonl"
-failpack capture --claude-latest --id from-fake-home --force
-```
-
-See also: [`STRANGER_WALKTHROUGH.md`](STRANGER_WALKTHROUGH.md),
-[`five-minute-demo.sh`](five-minute-demo.sh), [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+- [`claude-latest-hermetic.sh`](claude-latest-hermetic.sh) — one command for the fake-HOME proof
+- [`STRANGER_WALKTHROUGH.md`](STRANGER_WALKTHROUGH.md)
+- [`five-minute-demo.sh`](five-minute-demo.sh)
+- [`CONTRIBUTING.md`](../CONTRIBUTING.md)

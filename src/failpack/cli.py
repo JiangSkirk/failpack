@@ -313,8 +313,11 @@ def build_parser() -> argparse.ArgumentParser:
             "\n"
             "magic: --claude-latest is the Claude Code one-shot — newest *.jsonl\n"
             "under ~/.claude/projects. On success it prints the session path +\n"
-            "Next: promote --suggest. --cursor-latest finds the newest agent\n"
-            "transcript under ~/.cursor/projects/*/agent-transcripts (best-effort).\n"
+            "Next: promote --suggest. No sessions yet? Prove it hermetically:\n"
+            "  ./examples/claude-latest-hermetic.sh  (fake HOME + fixture)\n"
+            "  or: failpack demo --fast\n"
+            "--cursor-latest finds the newest agent transcript under\n"
+            "~/.cursor/projects/*/agent-transcripts (best-effort).\n"
             "A bare directory argument also picks the newest *.jsonl underneath.\n"
         ),
     )
@@ -833,8 +836,8 @@ def _handle_capture(args: argparse.Namespace) -> int:
     print(f"Captured pack '{pack.name}' → {pack}")
     if args.claude_latest or args.cursor_latest:
         print(
-            f"Next: failpack promote --suggest {pack.name}  ·  "
-            f"failpack promote --suggest --write {pack.name}  ·  "
+            f"Next: failpack promote --suggest --write {pack.name}  "
+            f"(applies; --suggest alone previews)  ·  "
             f"failpack replay {pack.name}"
         )
     return 0
