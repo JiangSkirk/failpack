@@ -171,7 +171,7 @@ def write_artifacts(artifacts: Path, summary: dict[str, Any]) -> None:
         "event_count": summary["event_count"],
     }
     (artifacts / "digest.json").write_text(
-        json.dumps(digest, indent=2, sort_keys=True) + "\n",
+        json.dumps(digest, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
 

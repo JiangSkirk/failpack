@@ -9,8 +9,10 @@ from pathlib import Path
 from failpack import __version__
 from failpack.commands_capture import cmd_capture
 from failpack.commands_init import cmd_init
+from failpack.commands_list import cmd_list
 from failpack.commands_promote import cmd_promote
 from failpack.commands_replay import cmd_replay
+from failpack.commands_status import cmd_status
 from failpack.license import cmd_license_check
 
 
@@ -35,10 +37,53 @@ def build_parser() -> argparse.ArgumentParser:
     p_init = sub.add_parser("init", help="Create .failpack/ workspace layout")
     p_init.set_defaults(func=_handle_init)
 
-    p_cap = sub.add_parser("capture", help="Ingest a Claude-Code-like JSONL transcript")
-    p_cap.add_argument("transcript", type=Path, help="Path to transcript.jsonl")
+    p_list = sub.add_parser("list", help="List packs under .failpack/packs/")
+    p_list.set_defaults(func=_handle_list)
+
+    p_status = sub.add_parser("status", help="Show meta + assertion summary for one pack")
+    p_status.add_argument("pack_id", help="Pack id under .failpack/packs/")
+    p_status.set_defaults(func=_handle_status)
+
+    p_cap = sub.add_parser(
+        "capture",
+        help="Ingest a Claude-Code-like JSONL transcript",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack capture fixtures/claude-code-failure.jsonl --id my-failure\n"
+            "  failpack capture --from-claude-project ~/.claude/projects\n"
+            "  failpack capture --stdin < session.jsonl\n"
+            "  failpack capture 'fixtures/*.jsonl' --id from-glob\n"
+        ),
+    )
+    p_cap.add_argument(
+        "transcript",
+        type=Path,
+        nargs="?",
+        default=None,
+        help="Path to transcript.jsonl (supports shell globs); use - for stdin",
+    )
     p_cap.add_argument("--id", dest="pack_id", default=None, help="Pack id (default: from transcript)")
     p_cap.add_argument("--force", action="store_true", help="Overwrite existing pack")
+    p_cap.add_argument(
+        "--from-claude-project",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Find newest *.jsonl under a Claude Code projects directory",
+    )
+    p_cap.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Read transcript JSONL from stdin",
+    )
+    p_cap.add_argument(
+        "--glob",
+        dest="pattern",
+        default=None,
+        metavar="PATTERN",
+        help="Glob for transcript files (picks newest if multiple match)",
+    )
     p_cap.set_defaults(func=_handle_capture)
 
     p_prom = sub.add_parser("promote", help="Mark pack golden and write assertions.yaml")
@@ -63,12 +108,32 @@ def _handle_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_list(args: argparse.Namespace) -> int:
+    rows = cmd_list(args.root)
+    if not rows:
+        print("No packs found under .failpack/packs/")
+        return 0
+    print("ID\tSTATUS\tEXIT\tPROMOTED_AT")
+    for row in rows:
+        print(row.format_line())
+    return 0
+
+
+def _handle_status(args: argparse.Namespace) -> int:
+    report = cmd_status(args.pack_id, root=args.root)
+    print("\n".join(report.summary_lines()))
+    return 0
+
+
 def _handle_capture(args: argparse.Namespace) -> int:
     pack = cmd_capture(
         args.transcript,
         pack_id=args.pack_id,
         root=args.root,
         force=args.force,
+        from_claude_project=args.from_claude_project,
+        stdin=args.stdin,
+        pattern=args.pattern,
     )
     print(f"Captured pack '{pack.name}' → {pack}")
     return 0
@@ -84,7 +149,6 @@ def _handle_replay(args: argparse.Namespace) -> int:
     report = cmd_replay(args.pack_id, root=args.root)
     print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1
-
 
 
 def _handle_license_check(args: argparse.Namespace) -> int:

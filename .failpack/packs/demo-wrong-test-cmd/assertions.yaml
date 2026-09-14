@@ -1,0 +1,20 @@
+version: 1
+pack_id: demo-wrong-test-cmd
+description: Golden assertions for this failure session. Replay fails CI if fingerprints
+  or expected signals drift.
+exit_code: 4
+fingerprints:
+- path: artifacts/digest.json
+  sha256: 3297a896906f06ac1701115eaa1ed452a54378392e199bb9339c1741c9b9a42e
+- path: artifacts/exit_code.txt
+  sha256: 7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d
+- path: artifacts/status.txt
+  sha256: 6da5b18878e110928643ebcc38dbb7552cf3a296eea56493e23edc2b93eecff8
+- path: artifacts/error.txt
+  sha256: 1088bdd86ee11bb469c7ac74f04ef4d6848002db3a59e02cf96fc6c97e28dbff
+- path: artifacts/summary.md
+  sha256: eaf2bf9dff5edfb6355f7f417ad5630f71e0037b7f4a2459ca3caf3234c1d15e
+substrings:
+- path: artifacts/error.txt
+  contains: 'ERROR: file or directory not found: tests/test_auth.py'
+min_events: 8

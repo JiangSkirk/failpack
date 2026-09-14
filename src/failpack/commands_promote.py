@@ -7,6 +7,7 @@ from typing import Any
 
 from failpack.pack import (
     artifacts_dir,
+    glob_fingerprint,
     read_meta,
     sha256_file,
     utc_now_iso,
@@ -52,7 +53,7 @@ def _default_assertions(pack: Path, meta: dict[str, Any]) -> dict[str, Any]:
             {"path": "artifacts/error.txt", "contains": error_text.strip()[:80]}
         )
 
-    return {
+    assertions: dict[str, Any] = {
         "version": 1,
         "pack_id": meta["id"],
         "description": (
@@ -63,6 +64,23 @@ def _default_assertions(pack: Path, meta: dict[str, Any]) -> dict[str, Any]:
         "fingerprints": fingerprints,
         "substrings": substrings,
     }
+
+    # Optional stronger checks (backward compatible — older packs omit these)
+    event_count = meta.get("event_count")
+    if event_count is not None:
+        assertions["min_events"] = int(event_count)
+
+    if files_root.is_dir() and any(files_root.rglob("*")):
+        pattern = "artifacts/files/**"
+        digest, matched = glob_fingerprint(pack, pattern)
+        if matched:
+            assertions["glob_fingerprint"] = {
+                "pattern": pattern,
+                "sha256": digest,
+                "file_count": len(matched),
+            }
+
+    return assertions
 
 
 def cmd_promote(pack_id: str, *, root: Path | None = None) -> Path:

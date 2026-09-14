@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 from datetime import datetime, timezone
@@ -32,6 +33,31 @@ def sha256_file(path: Path) -> str:
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def glob_fingerprint(pack: Path, pattern: str) -> tuple[str, list[str]]:
+    """SHA-256 over sorted ``relpath=file_sha256`` lines for files matching *pattern*.
+
+    *pattern* is relative to the pack root (e.g. ``artifacts/files/**``).
+    Returns ``(digest, matched_relative_paths)``.
+    """
+    matched: list[Path] = []
+    for path in pack.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(pack).as_posix()
+        if fnmatch.fnmatch(rel, pattern):
+            matched.append(path)
+
+    matched.sort(key=lambda p: p.relative_to(pack).as_posix())
+    lines: list[str] = []
+    rels: list[str] = []
+    for path in matched:
+        rel = path.relative_to(pack).as_posix()
+        rels.append(rel)
+        lines.append(f"{rel}={sha256_file(path)}")
+    payload = ("\n".join(lines) + ("\n" if lines else "")).encode("utf-8")
+    return sha256_bytes(payload), rels
 
 
 def read_meta(pack: Path) -> dict[str, Any]:

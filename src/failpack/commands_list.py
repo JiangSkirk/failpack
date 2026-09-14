@@ -1,0 +1,59 @@
+"""failpack list — show packs under .failpack/packs/."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from failpack.pack import read_meta
+from failpack.paths import failpack_dir, packs_dir
+
+
+@dataclass
+class PackRow:
+    id: str
+    status: str
+    exit_code: int | None
+    promoted_at: str | None
+
+    def format_line(self) -> str:
+        exit_s = "-" if self.exit_code is None else str(self.exit_code)
+        promoted = self.promoted_at or "-"
+        return f"{self.id}\t{self.status}\t{exit_s}\t{promoted}"
+
+
+def list_packs(root: Path | None = None) -> list[PackRow]:
+    base = failpack_dir(root)
+    if not base.is_dir():
+        raise FileNotFoundError(
+            f"No {base.name}/ directory. Run `failpack init` first."
+        )
+    packs = packs_dir(root)
+    if not packs.is_dir():
+        return []
+
+    rows: list[PackRow] = []
+    for path in sorted(packs.iterdir()):
+        if not path.is_dir() or path.name.startswith("."):
+            continue
+        meta_path = path / "meta.json"
+        if not meta_path.is_file():
+            continue
+        meta: dict[str, Any] = read_meta(path)
+        exit_code = meta.get("exit_code")
+        if exit_code is not None:
+            exit_code = int(exit_code)
+        rows.append(
+            PackRow(
+                id=str(meta.get("id") or path.name),
+                status=str(meta.get("status") or "unknown"),
+                exit_code=exit_code,
+                promoted_at=meta.get("promoted_at"),
+            )
+        )
+    return rows
+
+
+def cmd_list(root: Path | None = None) -> list[PackRow]:
+    return list_packs(root)
