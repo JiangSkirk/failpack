@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import io
 import shutil
+import time
 from pathlib import Path
 
 import pytest
 import yaml
 
 from failpack.commands_capture import cmd_capture, find_newest_jsonl, resolve_transcript_path
+from failpack.commands_doctor import cmd_doctor
 from failpack.commands_init import cmd_init
 from failpack.commands_list import cmd_list
 from failpack.commands_promote import cmd_promote
-from failpack.commands_replay import cmd_replay
+from failpack.commands_replay import cmd_replay, cmd_replay_all
 from failpack.commands_status import cmd_status
 from failpack.pack import glob_fingerprint, read_meta, sha256_file
 
@@ -205,8 +207,6 @@ def test_capture_from_claude_project(workspace: Path, tmp_path: Path) -> None:
     newer.write_text(FIXTURE_WRONG_CMD.read_text(encoding="utf-8"), encoding="utf-8")
     # ensure mtime ordering
     older.touch()
-    import time
-
     time.sleep(0.05)
     newer.write_text(FIXTURE_WRONG_CMD.read_text(encoding="utf-8"), encoding="utf-8")
 
@@ -222,6 +222,23 @@ def test_capture_from_claude_project(workspace: Path, tmp_path: Path) -> None:
     meta = read_meta(pack)
     assert meta["id"] == "from-claude"
     assert meta["exit_code"] == 4
+
+
+def test_capture_directory_picks_newest_jsonl(workspace: Path, tmp_path: Path) -> None:
+    """Passing a directory (not a .jsonl) auto-selects newest *.jsonl inside."""
+    project = tmp_path / "sessions"
+    project.mkdir()
+    older = project / "old.jsonl"
+    newer = project / "new.jsonl"
+    older.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    time.sleep(0.05)
+    newer.write_text(FIXTURE_WRONG_CMD.read_text(encoding="utf-8"), encoding="utf-8")
+
+    resolved = resolve_transcript_path(project)
+    assert resolved.name == "new.jsonl"
+
+    pack = cmd_capture(project, pack_id="from-dir", root=workspace)
+    assert read_meta(pack)["exit_code"] == 4
 
 
 def test_capture_glob(workspace: Path) -> None:
@@ -265,3 +282,74 @@ def test_wrong_cmd_fixture_promotes_without_glob_fingerprint(workspace: Path) ->
     assert "glob_fingerprint" not in data  # no written files in this session
     report = cmd_replay(DEMO_WRONG_CMD, root=workspace)
     assert report.ok, "\n".join(report.summary_lines())
+
+
+def test_doctor_ok_on_repo() -> None:
+    report = cmd_doctor(REPO)
+    assert report.ok, "\n".join(report.summary_lines())
+    names = {c.name for c in report.checks}
+    assert "python" in names
+    assert "pyyaml" in names
+    assert "layout" in names
+    assert "packs" in names
+    packs = next(c for c in report.checks if c.name == "packs")
+    assert "2 pack" in packs.detail
+    assert "golden" in packs.detail
+
+
+def test_doctor_missing_layout(tmp_path: Path) -> None:
+    report = cmd_doctor(tmp_path)
+    assert not report.ok
+    layout = next(c for c in report.checks if c.name == "layout")
+    assert not layout.ok
+    assert layout.fix and "failpack init" in layout.fix
+    # python + pyyaml should still pass
+    assert next(c for c in report.checks if c.name == "python").ok
+    assert next(c for c in report.checks if c.name == "pyyaml").ok
+
+
+def test_doctor_empty_workspace(workspace: Path) -> None:
+    report = cmd_doctor(workspace)
+    assert report.ok, "\n".join(report.summary_lines())
+    packs = next(c for c in report.checks if c.name == "packs")
+    assert packs.ok
+    assert "0 packs" in packs.detail
+    assert packs.fix and "capture" in packs.fix
+
+
+def test_replay_all_shipped_goldens() -> None:
+    report = cmd_replay_all(root=REPO)
+    assert report.ok, "\n".join(report.summary_lines())
+    ids = {r.pack_id for r in report.reports}
+    assert DEMO_ID in ids
+    assert DEMO_WRONG_CMD in ids
+    assert all(r.ok for r in report.reports)
+
+
+def test_replay_all_skips_non_golden_and_fails_on_broken(workspace: Path) -> None:
+    _capture_and_promote(workspace)
+    cmd_capture(FIXTURE_WRONG_CMD, pack_id="captured-only", root=workspace)
+
+    ok_report = cmd_replay_all(root=workspace)
+    assert ok_report.ok
+    assert [r.pack_id for r in ok_report.reports] == [DEMO_ID]
+    assert "captured-only" in ok_report.skipped_non_golden
+
+    # break the golden pack
+    assertions_path = workspace / ".failpack" / "packs" / DEMO_ID / "assertions.yaml"
+    data = yaml.safe_load(assertions_path.read_text(encoding="utf-8"))
+    data["exit_code"] = 0
+    assertions_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+
+    bad = cmd_replay_all(root=workspace)
+    assert not bad.ok
+    assert any(not r.ok for r in bad.reports)
+    summary = "\n".join(bad.summary_lines())
+    assert "RESULT: FAIL" in summary
+
+
+def test_replay_all_empty_workspace(workspace: Path) -> None:
+    report = cmd_replay_all(root=workspace)
+    assert report.ok
+    assert report.reports == []
+    assert "no golden packs" in "\n".join(report.summary_lines()).lower()

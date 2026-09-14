@@ -8,10 +8,11 @@ from pathlib import Path
 
 from failpack import __version__
 from failpack.commands_capture import cmd_capture
+from failpack.commands_doctor import cmd_doctor
 from failpack.commands_init import cmd_init
 from failpack.commands_list import cmd_list
 from failpack.commands_promote import cmd_promote
-from failpack.commands_replay import cmd_replay
+from failpack.commands_replay import cmd_replay, cmd_replay_all
 from failpack.commands_status import cmd_status
 from failpack.license import cmd_license_check
 
@@ -20,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="failpack",
         description=(
-            "FailPack (Orin Replay): turn coding-agent failure sessions "
+            "FailPack: turn coding-agent failure sessions "
             "into golden CI regression packs."
         ),
     )
@@ -37,6 +38,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_init = sub.add_parser("init", help="Create .failpack/ workspace layout")
     p_init.set_defaults(func=_handle_init)
 
+    p_doctor = sub.add_parser(
+        "doctor",
+        help="Check Python, PyYAML, .failpack/ layout, and pack counts",
+    )
+    p_doctor.set_defaults(func=_handle_doctor)
+
     p_list = sub.add_parser("list", help="List packs under .failpack/packs/")
     p_list.set_defaults(func=_handle_list)
 
@@ -51,9 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack capture fixtures/claude-code-failure.jsonl --id my-failure\n"
+            "  failpack capture ~/.claude/projects --id my-failure\n"
             "  failpack capture --from-claude-project ~/.claude/projects\n"
             "  failpack capture --stdin < session.jsonl\n"
             "  failpack capture 'fixtures/*.jsonl' --id from-glob\n"
+            "\n"
+            "tip: a directory argument picks the newest *.jsonl underneath\n"
+            "(Claude Code sessions are often under ~/.claude/projects).\n"
         ),
     )
     p_cap.add_argument(
@@ -61,7 +72,10 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         nargs="?",
         default=None,
-        help="Path to transcript.jsonl (supports shell globs); use - for stdin",
+        help=(
+            "Path to transcript.jsonl, or a directory (newest *.jsonl inside); "
+            "supports shell globs; use - for stdin"
+        ),
     )
     p_cap.add_argument("--id", dest="pack_id", default=None, help="Pack id (default: from transcript)")
     p_cap.add_argument("--force", action="store_true", help="Overwrite existing pack")
@@ -90,8 +104,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_prom.add_argument("pack_id", help="Pack id under .failpack/packs/")
     p_prom.set_defaults(func=_handle_promote)
 
-    p_rep = sub.add_parser("replay", help="Verify golden assertions (exit 0 pass / non-zero fail)")
-    p_rep.add_argument("pack_id", help="Pack id under .failpack/packs/")
+    p_rep = sub.add_parser(
+        "replay",
+        help="Verify golden assertions (exit 0 pass / non-zero fail)",
+    )
+    p_rep.add_argument(
+        "pack_id",
+        nargs="?",
+        default=None,
+        help="Pack id under .failpack/packs/ (omit when using --all)",
+    )
+    p_rep.add_argument(
+        "--all",
+        action="store_true",
+        help="Replay every golden pack; exit non-zero if any fail",
+    )
     p_rep.set_defaults(func=_handle_replay)
 
     p_lic = sub.add_parser("license", help="License helpers for future Pro gating")
@@ -106,6 +133,12 @@ def _handle_init(args: argparse.Namespace) -> int:
     path = cmd_init(args.root)
     print(f"Initialized FailPack workspace at {path}")
     return 0
+
+
+def _handle_doctor(args: argparse.Namespace) -> int:
+    report = cmd_doctor(args.root)
+    print("\n".join(report.summary_lines()))
+    return 0 if report.ok else 1
 
 
 def _handle_list(args: argparse.Namespace) -> int:
@@ -146,6 +179,14 @@ def _handle_promote(args: argparse.Namespace) -> int:
 
 
 def _handle_replay(args: argparse.Namespace) -> int:
+    if args.all and args.pack_id:
+        raise ValueError("Use either a pack id or --all, not both.")
+    if args.all:
+        report = cmd_replay_all(root=args.root)
+        print("\n".join(report.summary_lines()))
+        return 0 if report.ok else 1
+    if not args.pack_id:
+        raise ValueError("Provide a pack id, or pass --all to replay every golden pack.")
     report = cmd_replay(args.pack_id, root=args.root)
     print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1

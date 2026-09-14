@@ -20,11 +20,12 @@ def cmd_init(root: Path | None = None) -> Path:
         readme.write_text(
             "# FailPack workspace\n\n"
             "Packs live under `packs/<id>/`.\n\n"
+            "- `failpack doctor` — check env + this layout\n"
             "- `failpack list` — list packs (id, status, exit_code, promoted_at)\n"
             "- `failpack status <id>` — meta + assertion summary\n"
-            "- `failpack capture <transcript.jsonl>` — ingest a failure session\n"
+            "- `failpack capture <transcript.jsonl|dir>` — ingest a failure session\n"
             "- `failpack promote <id>` — mark golden and write assertions\n"
-            "- `failpack replay <id>` — verify assertions in CI\n",
+            "- `failpack replay <id>` / `failpack replay --all` — verify assertions in CI\n",
             encoding="utf-8",
         )
     return fp

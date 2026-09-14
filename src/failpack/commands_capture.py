@@ -14,20 +14,22 @@ from failpack.transcript import load_jsonl, slug_from_summary, summarize_events,
 
 
 def find_newest_jsonl(project_dir: Path) -> Path:
-    """Find the newest ``*.jsonl`` under a Claude Code projects directory.
+    """Find the newest ``*.jsonl`` under a directory tree.
 
-    Claude Code stores session transcripts under a projects dir as ``*.jsonl``.
-    ``project_dir`` may be the projects root or a single project folder.
+    Claude Code often stores session transcripts under ``~/.claude/projects``
+    as ``*.jsonl``. ``project_dir`` may be that projects root, a single project
+    folder, or any other directory that contains transcripts.
     """
     project_dir = project_dir.expanduser().resolve()
     if not project_dir.is_dir():
-        raise FileNotFoundError(f"Claude project path not found: {project_dir}")
+        raise FileNotFoundError(f"Directory not found: {project_dir}")
 
     candidates = [p for p in project_dir.rglob("*.jsonl") if p.is_file()]
     if not candidates:
         raise FileNotFoundError(
             f"No *.jsonl transcripts under {project_dir}. "
-            "Pass a Claude Code projects directory, or use a fixture path / --stdin."
+            "Pass a directory that contains session JSONL "
+            "(Claude Code tip: ~/.claude/projects), a fixture path, or --stdin."
         )
     return max(candidates, key=lambda p: p.stat().st_mtime)
 
@@ -102,8 +104,17 @@ def resolve_transcript_path(
         return max(files, key=lambda p: p.stat().st_mtime).resolve()
 
     path = transcript.expanduser()
+    # Directory (not a .jsonl file): pick newest *.jsonl underneath.
+    # Tip: Claude Code sessions often live under ~/.claude/projects.
+    if path.is_dir():
+        return find_newest_jsonl(path)
     if not path.is_file():
-        raise FileNotFoundError(f"Transcript not found: {path}")
+        raise FileNotFoundError(
+            f"Transcript not found: {path}. "
+            "Pass a .jsonl file, a directory containing *.jsonl "
+            "(e.g. a Claude Code projects folder), --from-claude-project, "
+            "--stdin, or a glob."
+        )
     return path.resolve()
 
 

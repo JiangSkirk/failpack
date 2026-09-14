@@ -6,8 +6,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from failpack.commands_list import list_packs
 from failpack.pack import artifacts_dir, glob_fingerprint, read_assertions, read_meta, sha256_file
-from failpack.paths import require_pack
+from failpack.paths import failpack_dir, require_pack
 
 
 @dataclass
@@ -32,6 +33,36 @@ class ReplayReport:
             mark = "PASS" if c.ok else "FAIL"
             lines.append(f"  [{mark}] {c.name}: {c.detail}")
         lines.append("RESULT: " + ("PASS" if self.ok else "FAIL"))
+        return lines
+
+
+@dataclass
+class ReplayAllReport:
+    reports: list[ReplayReport] = field(default_factory=list)
+    skipped_non_golden: list[str] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        # No golden packs → success (nothing to fail). Any failed pack → fail.
+        return all(r.ok for r in self.reports)
+
+    def summary_lines(self) -> list[str]:
+        lines = ["failpack replay --all"]
+        if not self.reports:
+            lines.append("  (no golden packs found)")
+            lines.append("RESULT: PASS")
+            return lines
+        for report in self.reports:
+            mark = "PASS" if report.ok else "FAIL"
+            lines.append(f"  [{mark}] {report.pack_id}")
+            for c in report.checks:
+                cmark = "PASS" if c.ok else "FAIL"
+                lines.append(f"    [{cmark}] {c.name}: {c.detail}")
+        failed = [r.pack_id for r in self.reports if not r.ok]
+        lines.append(
+            f"RESULT: {'PASS' if self.ok else 'FAIL'} "
+            f"({len(self.reports) - len(failed)}/{len(self.reports)} golden packs passed)"
+        )
         return lines
 
 
@@ -156,3 +187,20 @@ def cmd_replay(pack_id: str, *, root: Path | None = None) -> ReplayReport:
         )
 
     return report
+
+
+def cmd_replay_all(*, root: Path | None = None) -> ReplayAllReport:
+    """Replay every golden pack under ``.failpack/packs/``."""
+    base = failpack_dir(root)
+    if not base.is_dir():
+        raise FileNotFoundError(
+            f"No {base.name}/ directory. Run `failpack init` first."
+        )
+
+    all_report = ReplayAllReport()
+    for row in list_packs(root):
+        if row.status != "golden":
+            all_report.skipped_non_golden.append(row.id)
+            continue
+        all_report.reports.append(cmd_replay(row.id, root=root))
+    return all_report
