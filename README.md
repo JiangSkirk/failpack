@@ -42,7 +42,7 @@ pip install -e ".[dev]"
 Then confirm:
 
 ```bash
-failpack --version   # → failpack 0.7.0
+failpack --version   # → failpack 0.8.0
 failpack doctor
 ```
 
@@ -50,7 +50,7 @@ failpack doctor
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
-## What you get (v0.7)
+## What you get (v0.8)
 
 | Command | What it does |
 |---|---|
@@ -64,7 +64,12 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack capture --claude-latest` | **Magic path:** newest Claude Code session under `~/.claude/projects` |
 | `failpack capture <transcript.jsonl\|dir>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
 | `failpack promote <id>` | Mark golden + write `assertions.yaml` (+ expected text snapshots) |
+| `failpack promote --dry-run <id>` | Preview assertions YAML **without** writing |
 | `failpack re-promote <id>` | Refresh assertions from **current** artifacts after intentional fix |
+| `failpack lint [id]` | Validate pack layout + assertion schema (no replay) |
+| `failpack report [id]` | Markdown replay summary (stdout or `$GITHUB_STEP_SUMMARY`) |
+| `failpack rename <old> <new>` | Rename pack id + update meta / assertions |
+| `failpack rm <id> [--force]` | Delete a pack (golden requires `--force`) |
 | `failpack export <id> [-o pack.tgz]` | Share a golden pack (assertions + expected + meta + artifacts) |
 | `failpack import <pack.tgz>` | Restore into `.failpack/packs/` (`--force` / `--rename`) |
 | `failpack watch <transcript>` | Capture → promote → replay (local; exit 1 on fail) |
@@ -72,6 +77,7 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack replay --all` | Replay every golden pack; **SUMMARY** of fails; exit non-zero if any fail |
 | `failpack replay … --json` | Machine-readable JSON (same exit codes) |
 | `failpack replay … --no-diff` | Disable unified diffs under fingerprint FAIL blocks |
+| `failpack completion bash\|zsh` | Print shell completion script for power users |
 | `failpack migrate` | Stamp `schema_version` (no-op message if already current) |
 
 On failure, replay prints **which check**, **expected vs actual**, and a **one-line hint**. When a **fingerprint** fails and a promote-time text snapshot exists, it also prints a **short unified diff** of expected vs actual artifact text (truncated; disable with `--no-diff`).
@@ -148,6 +154,29 @@ failpack watch fixtures/claude-code-failure.jsonl --id my-failure --force
 ```
 
 Break a golden assertion (or mutate an artifact under `.failpack/packs/<id>/artifacts/`) and `failpack replay` exits non-zero — that is the CI signal. When the new signals are intentional, `failpack re-promote <id>` refreshes assertions from current artifacts.
+
+## Pack lifecycle
+
+Manage packs after capture without hand-editing `.failpack/packs/`:
+
+```bash
+failpack promote --dry-run my-failure   # preview assertions.yaml (no write)
+failpack promote my-failure             # write assertions + mark golden
+failpack lint my-failure                # schema / layout validate (no replay)
+failpack report                         # markdown summary (CI-friendly)
+failpack report --github                # append to $GITHUB_STEP_SUMMARY
+failpack rename my-failure nicer-id     # rename dir + meta.id + assertions pack_id
+failpack rm nicer-id                    # refuses if golden
+failpack rm nicer-id --force            # delete golden pack for real
+
+# shell completion (optional)
+eval "$(failpack completion bash)"      # or: failpack completion zsh
+```
+
+On promote / replay load, FailPack **validates** assertion kinds and required fields.
+Unknown kinds (e.g. a typo’d top-level key) or missing `path` / `sha256` / `contains`
+raise a clear error instead of being silently ignored. `failpack lint` surfaces the
+same checks as a dedicated command.
 
 ### Cursor-ish transcripts (manual)
 

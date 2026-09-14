@@ -5,6 +5,40 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-09-14
+
+### Added
+
+- **`failpack rm <id> [--force]`** — delete a pack directory; refuses without
+  `--force` when status is `golden`.
+- **`failpack rename <old> <new>`** — rename pack id, directory, `meta.id`, and
+  `assertions.yaml` `pack_id`.
+- **`failpack promote --dry-run <id>`** (also `promote <id> --dry-run`) — print
+  the assertions YAML that would be written without writing; existing promote
+  behavior unchanged. Same flag on `re-promote`.
+- **Assertion schema validate** on promote / replay load (`read_assertions` /
+  `write_assertions`): clear `ValueError` for unknown assertion kinds or missing
+  required fields (no silent ignore).
+- **`failpack lint [id]`** — light pack validate (layout + assertion schema;
+  exit non-zero on errors).
+- **`failpack report [id]`** — markdown replay summary for CI; `--github`
+  appends to `$GITHUB_STEP_SUMMARY`. Composite action writes a step summary
+  and runs `lint` by default.
+- **`failpack completion bash|zsh`** — print an installable shell completion
+  script (argparse-style; pack ids from `failpack list`).
+- README **Pack lifecycle** section.
+
+### Changed
+
+- Version bump to **0.8.0**.
+- `examples/five-minute-demo.sh` expects **0.8.x**.
+- Composite action: optional `run-lint` / `step-summary` inputs (both default on).
+
+### Notes
+
+- Zero coupling to Echo / Orin / titan-agent (or any live agent install).
+- No monetization in this release — open CLI stays the product.
+
 ## [0.7.0] — 2026-09-14
 
 ### Added
