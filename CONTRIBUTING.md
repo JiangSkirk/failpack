@@ -15,12 +15,18 @@ Requires Python **3.11+**.
 
 ```bash
 pip install -e ".[dev]"
-failpack --version   # → failpack 1.0.0
+failpack --version   # → failpack 1.5.2
 failpack doctor --score
 failpack demo --fast         # ~60s stranger wow path (recommended)
 failpack demo --skip-break   # optional full local wow path without break
 pytest -q
 ```
+
+## Support
+
+Open users: file a **[GitHub Issue](https://github.com/JiangSkirk/failpack/issues)**, or email
+`8725598a@gmail.com` (owner JiangSkirk). See [`docs/SUPPORT.md`](docs/SUPPORT.md).
+No Discord.
 
 ## Workflow
 

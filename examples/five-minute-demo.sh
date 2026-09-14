@@ -21,7 +21,7 @@ export NO_COLOR="${NO_COLOR:-1}"
 
 MODE="${1:---fast}"
 
-echo "==> failpack --version (expect 1.3.x)"
+echo "==> failpack --version (expect 1.5.x)"
 failpack --version
 
 echo

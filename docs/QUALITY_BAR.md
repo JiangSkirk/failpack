@@ -3,17 +3,18 @@
 Internal checklist. Not marketing copy. Honest gaps between “works for a
 curious stranger on GitHub” and “comfortable asking someone to pay.”
 
-Status as of **1.5.0**: product loop is real (`demo --fast` → capture →
-promote → replay → CI Action). Sell-ready still needs the items below.
+Status as of **1.5.2**: product loop is real (`demo --fast` → capture →
+promote → replay → CI Action). Support path is stated. Sell-ready still needs
+the open items below.
 
 ## Must-have before asking for money
 
 | Gap | Why it blocks | Notes |
 |---|---|---|
-| **PyPI token + first upload** | Strangers expect `pip install failpack`. Git install works; discovery and trust do not. | Packaging is ready (`docs/PUBLISH.md`). **Do not upload without a token in env.** |
-| **Real-user packs** | Shipped goldens are fixtures. Sell story needs ≥1 pack from a stranger’s actual Claude/Cursor failure, exported and replayed cleanly. | Track anonymized exports under a private stash; do not invent “user” packs. |
-| **One unpaid stranger walkthrough** | Someone who did not write FailPack should finish install → `demo --fast` → optional `capture --claude-latest` without a Slack babysitter. | Use `examples/STRANGER_WALKTHROUGH.md`; capture friction notes, fix bugs only. |
-| **Support path** | Paid users need somewhere to yell. | GitHub Issues is fine for open; Personal/Team needs a stated channel (email or Discord) before charging. |
+| **PyPI token + first upload** | Strangers expect `pip install failpack`. Git install works; discovery and trust do not. | Packaging is ready (`docs/PUBLISH.md`). **Do not upload without a token in env.** Still blocked. |
+| **Real-user packs** | Shipped goldens are fixtures. Sell story needs ≥1 pack from a stranger’s actual Claude/Cursor failure, exported and replayed cleanly. | Track anonymized exports under a private stash; do not invent “user” packs. Still open. |
+| **One unpaid stranger walkthrough** | Someone who did not write FailPack should finish install → `demo --fast` → optional `capture --claude-latest` without a Slack babysitter. | Use `examples/STRANGER_WALKTHROUGH.md`; capture friction notes, fix bugs only. Agent critiques help; unpaid human still open. |
+| **Support path** ✅ | Paid users need somewhere to yell. | **Done in 1.5.2:** GitHub Issues + email `8725598a@gmail.com` (JiangSkirk) in [`SUPPORT.md`](SUPPORT.md) / README / CONTRIBUTING. No Discord. |
 
 ## Nice-to-have (does not block a soft launch)
 

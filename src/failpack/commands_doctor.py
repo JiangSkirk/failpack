@@ -178,7 +178,7 @@ def _check_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
             f"found at {projects} (0 agent *.jsonl)",
             fix=(
                 "After a Cursor agent run, try: "
-                "failpack capture --cursor-latest --id my-failure"
+                "failpack capture --cursor-latest --id cursor-fail"
             ),
         )
 
@@ -189,7 +189,7 @@ def _check_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
         f"found at {projects} ({n} transcript{'s' if n != 1 else ''})",
         fix=(
             f"Newest: {newest.name} — try: "
-            "failpack capture --cursor-latest --id my-failure"
+            "failpack capture --cursor-latest --id cursor-fail"
         ),
     )
 
@@ -347,7 +347,7 @@ def _score_cursor_projects(*, home: Path | None = None) -> DoctorCheck:
         "cursor_projects",
         cursor_projects_dir(home=home),
         empty_fix=(
-            "After a Cursor agent run: failpack capture --cursor-latest --id my-failure"
+            "After a Cursor agent run: failpack capture --cursor-latest --id cursor-fail"
         ),
         missing_fix="Use Cursor, or skip and use: failpack demo",
     )

@@ -549,7 +549,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_3_0() -> None:
-    assert __version__ == "1.5.1"
+    assert __version__ == "1.5.2"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -1092,14 +1092,23 @@ def test_examples_docs_exist() -> None:
     assert "~/.local/bin" in walk_body
     assert "RELEASE_NOTES_1.5.0" in walk_body or "v1.5.0" in walk_body
     assert "failpack diff" in walk_body or "list --json" in walk_body or "packs --json" in walk_body
+    assert "Clean up with:" in walk_body
+    assert "SUPPORT.md" in walk_body
+    assert "1.5.2" in walk_body
+    contributing = (REPO / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "1.5.2" in contributing
+    assert "8725598a@gmail.com" in contributing
+    assert "SUPPORT.md" in contributing
 
 
 def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.5.2" in changelog
     assert "1.5.1" in changelog
     assert "1.5.0" in changelog
+    assert "SUPPORT.md" in changelog
     assert "1.4.0" in changelog
     assert "1.3.0" in changelog
     assert "1.2.0" in changelog
@@ -1323,7 +1332,8 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
-    assert "1.5.1" in text
+    assert "1.5.2" in text
+    assert "1.5.1" in text or "1.5.0" in text
     assert "1.5.0" in text
     assert "1.4.0" in text
     assert "1.3.0" in text
@@ -1351,12 +1361,22 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "Stet" in text
     assert "AgentClash" in text
     assert "stunning" not in text.lower()
+    assert "8725598a@gmail.com" in text
+    assert "SUPPORT.md" in text
     assert (REPO / "docs" / "PACKS.md").is_file()
     assert (REPO / "docs" / "PUBLISH.md").is_file()
     assert (REPO / "docs" / "QUALITY_BAR.md").is_file()
+    assert (REPO / "docs" / "SUPPORT.md").is_file()
+    support = (REPO / "docs" / "SUPPORT.md").read_text(encoding="utf-8")
+    assert "8725598a@gmail.com" in support
+    assert "JiangSkirk" in support
+    assert "issues" in support.lower()
+    assert "Discord" in support  # stated as not offered
     quality = (REPO / "docs" / "QUALITY_BAR.md").read_text(encoding="utf-8")
     assert "PyPI" in quality
     assert "real-user" in quality.lower() or "real user" in quality.lower()
+    assert "SUPPORT.md" in quality or "Support path" in quality
+    assert "Done" in quality or "✅" in quality
     publish = (REPO / "docs" / "PUBLISH.md").read_text(encoding="utf-8")
     assert "python -m build" in publish
     assert "twine" in publish

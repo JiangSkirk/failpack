@@ -13,10 +13,10 @@ repo checkout). Target: **about a minute** to first PASS after install.
 $ pip install "git+https://github.com/JiangSkirk/failpack.git"
 Collecting git+https://github.com/JiangSkirk/failpack.git
   …
-Successfully installed failpack-1.5.1 …
+Successfully installed failpack-1.5.2 …
 
 $ failpack --version
-failpack 1.5.1
+failpack 1.5.2
 ```
 
 Editable checkout (optional, for contributing):
@@ -26,7 +26,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.5.1
+failpack 1.5.2
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -39,7 +39,7 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --fast
-failpack demo --fast  (~60s wow)  ·  failpack 1.5.1
+failpack demo --fast  (~60s wow)  ·  failpack 1.5.2
 
 ==> 1/3  capture bundled fixture → 'demo-five-minute'
 Captured pack 'demo-five-minute' → …/.failpack/packs/demo-five-minute
@@ -51,6 +51,7 @@ Promoted pack 'demo-five-minute' to golden
 RESULT: PASS
 
 Done (~60s). Demo pack left at …/.failpack/packs/demo-five-minute (status=golden).
+Clean up with:  rm -rf …/.failpack/packs/demo-five-minute
 Next: failpack capture --claude-latest --id my-failure  ·  failpack demo   # full path with break/restore
 RESULT: OK
 ```
@@ -83,9 +84,12 @@ RESULT: OK
 ```
 
 Score hits **100/100** when both Claude Code (`~/.claude/projects`) and Cursor
-(`~/.cursor/projects`) session trees exist with transcripts. Either agent alone
-adds **+5**; neither is required — fixtures and `failpack demo --fast` are enough.
-CI without agent homes stays at **90/100** (does not break).
+(`~/.cursor/projects`) session trees exist **with transcripts**. Either agent
+alone adds **+5** with sessions; an empty agent projects dir can add **+2**
+half-credit — so a clean CI-style host may show **90**, and a laptop with an
+empty `~/.cursor/projects` may show **92**. Neither agent is required —
+fixtures and `failpack demo --fast` are enough. Missing both still yields at
+least **90/100** (does not break).
 
 ## 4) Forced FAIL → explain → diff
 
@@ -163,6 +167,7 @@ failpack lint
 - [`five-minute-demo.sh`](five-minute-demo.sh) — delegates to `failpack demo`
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
+- [`../docs/SUPPORT.md`](../docs/SUPPORT.md) — GitHub Issues + email
 - [`../RELEASE_NOTES_1.5.0.md`](../RELEASE_NOTES_1.5.0.md) — tagged GitHub Release `v1.5.0`
 - [`../docs/QUALITY_BAR.md`](../docs/QUALITY_BAR.md) — honest sell-ready gaps
 - [`../CHANGELOG.md`](../CHANGELOG.md)

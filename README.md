@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.5.1-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.5.2-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** is regression memory for coding-agent failures.
 
@@ -59,11 +59,17 @@ failpack demo --fast     # ~60s wow (recommended)
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.5.1
+failpack --version          # → failpack 1.5.2
 failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
 ```
 
 Stranger copy-paste session: [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md).
+
+## Support
+
+Bugs and friction: open a **[GitHub Issue](https://github.com/JiangSkirk/failpack/issues)**.
+Private contact: email `8725598a@gmail.com` (owner **JiangSkirk**). Details:
+[`docs/SUPPORT.md`](docs/SUPPORT.md).
 
 `failpack doctor` checks Python, PyYAML, soft Claude / Cursor project paths, `.failpack/` layout, and pack counts — with tips like `capture --claude-latest` / `--cursor-latest` when sessions are found. `--score` adds a readiness score over **python**, **packs_dir**, **claude_projects**, **cursor_projects**, **lint**, and **golden_count**. Agent paths are soft (+5 each); missing both still yields **90/100** in CI. Doctor exits **0** by default; pass `--strict` to fail the process when checks FAIL.
 
@@ -388,7 +394,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 
