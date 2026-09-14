@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-09-14T08:22:09+00:00",
+  "event_count": 11,
+  "exit_code": 1,
+  "id": "demo-missing-import",
+  "promoted_at": "2026-09-14T08:22:09+00:00",
+  "session_id": "demo-missing-import",
+  "session_status": "failed",
+  "source_transcript": "/workspace/failpack-app/fixtures/claude-code-failure.jsonl",
+  "status": "golden"
+}

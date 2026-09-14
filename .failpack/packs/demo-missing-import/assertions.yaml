@@ -1,0 +1,23 @@
+version: 1
+pack_id: demo-missing-import
+description: Golden assertions for this failure session. Replay fails CI if fingerprints
+  or expected signals drift.
+exit_code: 1
+fingerprints:
+- path: artifacts/digest.json
+  sha256: e3923408bba81d655bcd81a67096632a670fca37a8fa667209c93a78f9d760a4
+- path: artifacts/exit_code.txt
+  sha256: 4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
+- path: artifacts/status.txt
+  sha256: 6da5b18878e110928643ebcc38dbb7552cf3a296eea56493e23edc2b93eecff8
+- path: artifacts/error.txt
+  sha256: 528e4fbd4a2c3e8c28c965fd505280aa44933404011a1303153293eb2fde0840
+- path: artifacts/summary.md
+  sha256: 26f5db7d951766ffc275eb6b32bb476353419bcc0be0c8c788b1ecd15a17ff6d
+- path: artifacts/files/app/health.py
+  sha256: 142380218c6fe52e2eef673b5dee5214065677b7b7cfee469965534afcd374b9
+- path: artifacts/files/app/main.py
+  sha256: 60322037670f1e7514f49e557d79e0f0d4cd2f537f2722c515920663f5137cd3
+substrings:
+- path: artifacts/error.txt
+  contains: 'NameError: name ''health_payload'' is not defined'
