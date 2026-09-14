@@ -10,13 +10,14 @@ from failpack import __version__
 from failpack.commands_capture import cmd_capture
 from failpack.commands_completion import cmd_completion
 from failpack.commands_demo import cmd_demo
+from failpack.commands_diff import cmd_diff
 from failpack.commands_doctor import cmd_doctor
 from failpack.commands_explain import cmd_explain
 from failpack.commands_export import cmd_export
 from failpack.commands_import import cmd_import
 from failpack.commands_init import cmd_init
 from failpack.commands_lint import cmd_lint
-from failpack.commands_list import cmd_list, format_table
+from failpack.commands_list import cmd_list, format_table, rows_to_json
 from failpack.commands_migrate import cmd_migrate
 from failpack.commands_promote import (
     cmd_promote,
@@ -44,18 +45,20 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         epilog=(
             "examples:\n"
-            "  failpack demo\n"
+            "  failpack demo --fast\n"
             "  failpack doctor --score\n"
             "  failpack capture --claude-latest --id my-failure\n"
             "  failpack capture --cursor-latest --id my-failure\n"
             "  failpack promote my-failure && failpack replay my-failure\n"
+            "  failpack explain my-failure\n"
+            "  failpack diff my-failure\n"
             "  failpack export my-failure -o my-failure.tgz\n"
             "  failpack import my-failure.tgz\n"
             "  failpack replay --all\n"
             "  failpack list\n"
+            "  failpack list --json\n"
             "  failpack show demo-missing-import\n"
             "  failpack report --github\n"
-            "  failpack explain my-failure\n"
             "  failpack lint\n"
             "  failpack promote --dry-run my-failure\n"
             "  failpack promote --suggest my-failure\n"
@@ -67,7 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
             "\n"
             "install (no PyPI required):\n"
             '  pip install "git+https://github.com/JiangSkirk/failpack.git"\n'
-            "  failpack demo\n"
+            "  failpack demo --fast\n"
             "\n"
             "environment:\n"
             "  NO_COLOR      disable ANSI colors\n"
@@ -226,9 +229,40 @@ def build_parser() -> argparse.ArgumentParser:
         "list",
         help="List packs under .failpack/packs/ (clean table)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="examples:\n  failpack list\n",
+        epilog=(
+            "examples:\n"
+            "  failpack list\n"
+            "  failpack list --json\n"
+            "\n"
+            "`list --json` is the stable machine-readable pack index for tooling.\n"
+            "(`failpack packs --json` is an alias.)\n"
+        ),
+    )
+    p_list.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit stable JSON array of packs (id, status, exit_code, promoted_at)",
     )
     p_list.set_defaults(func=_handle_list)
+
+    p_packs = sub.add_parser(
+        "packs",
+        help="Alias for list (prefer list; --json for tooling)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack packs\n"
+            "  failpack packs --json\n"
+            "\n"
+            "Same output as `failpack list` / `failpack list --json`.\n"
+        ),
+    )
+    p_packs.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit stable JSON array of packs (id, status, exit_code, promoted_at)",
+    )
+    p_packs.set_defaults(func=_handle_list)
 
     p_status = sub.add_parser(
         "status",
@@ -411,7 +445,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack watch ~/.claude/projects --id latest --force\n"
             "\n"
             "On replay FAIL, prints the same STORY block and next: tip as\n"
-            "`failpack replay` (explain · promote --suggest · re-promote) and exits 1.\n"
+            "`failpack replay` (explain · diff · re-promote) and exits 1.\n"
         ),
     )
     p_watch.add_argument(
@@ -511,9 +545,11 @@ def build_parser() -> argparse.ArgumentParser:
             "examples:\n"
             "  failpack explain demo-missing-import\n"
             "  failpack explain                 # every currently failing golden\n"
+            "  failpack diff demo-missing-import  # expected vs actual text (no replay)\n"
             "\n"
             "Replays assertions (no verbose check dump) and prints one STORY:\n"
             "what broke, which assertion, what to do next.\n"
+            "For fingerprint drift without replaying again, use `failpack diff <id>`.\n"
             "Exit 0 on PASS, non-zero on FAIL (same signal as replay).\n"
         ),
     )
@@ -524,6 +560,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="Pack id (default: explain every failing golden pack)",
     )
     p_explain.set_defaults(func=_handle_explain)
+
+    p_diff = sub.add_parser(
+        "diff",
+        help="Expected vs actual artifact summary (no full replay)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack diff demo-missing-import\n"
+            "  failpack diff demo-missing-import --json\n"
+            "  failpack diff demo-missing-import --no-diff\n"
+            "\n"
+            "Compares promote-time expected/ snapshots to current artifacts.\n"
+            "Does not run assertion replay — use after explain when you want the\n"
+            "text drift without a full check dump. Exit 0 when all match.\n"
+        ),
+    )
+    p_diff.add_argument("pack_id", help="Pack id under .failpack/packs/")
+    p_diff.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human summary lines",
+    )
+    p_diff.add_argument(
+        "--no-diff",
+        action="store_true",
+        help="Omit unified diffs (status lines / JSON status only)",
+    )
+    p_diff.set_defaults(func=_handle_diff)
 
     p_report = sub.add_parser(
         "report",
@@ -703,6 +767,9 @@ def _handle_import(args: argparse.Namespace) -> int:
 
 def _handle_list(args: argparse.Namespace) -> int:
     rows = cmd_list(args.root)
+    if getattr(args, "json", False):
+        sys.stdout.write(rows_to_json(rows))
+        return 0
     if not rows:
         print("No packs found under .failpack/packs/")
         return 0
@@ -870,6 +937,19 @@ def _handle_replay(args: argparse.Namespace) -> int:
 def _handle_explain(args: argparse.Namespace) -> int:
     report = cmd_explain(args.pack_id, root=args.root)
     print("\n".join(report.summary_lines()))
+    return 0 if report.ok else 1
+
+
+def _handle_diff(args: argparse.Namespace) -> int:
+    report = cmd_diff(
+        args.pack_id,
+        root=args.root,
+        show_diff=not args.no_diff,
+    )
+    if args.json:
+        sys.stdout.write(report.to_json())
+    else:
+        print("\n".join(report.summary_lines(show_diff=not args.no_diff)))
     return 0 if report.ok else 1
 
 

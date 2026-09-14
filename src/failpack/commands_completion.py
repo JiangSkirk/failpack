@@ -8,8 +8,8 @@ ShellName = Literal["bash", "zsh"]
 
 # Keep in sync with cli.build_parser subcommands (plus nested license check).
 _COMMANDS = (
-    "init doctor demo export import list status show capture promote "
-    "re-promote watch replay explain report lint migrate rm rename "
+    "init doctor demo export import list packs status show capture promote "
+    "re-promote watch replay explain diff report lint migrate rm rename "
     "completion license"
 ).split()
 
@@ -46,7 +46,7 @@ _failpack() {{
       COMPREPLY=( $(compgen -W "check" -- "${{cur}}") )
       return 0
       ;;
-    promote|re-promote|status|show|export|rm|rename|replay|explain|report|lint)
+    promote|re-promote|status|show|export|rm|rename|replay|explain|diff|report|lint)
       # Pack ids from failpack list (first column)
       local packs
       packs="$(failpack list 2>/dev/null | awk 'NR>2 {{print $1}}')"
@@ -60,11 +60,17 @@ _failpack() {{
         COMPREPLY=( $(compgen -W "--github -o --output --no-diff ${{packs}}" -- "${{cur}}") )
       elif [[ "${{cmd}}" == "show" ]]; then
         COMPREPLY=( $(compgen -W "--json ${{packs}}" -- "${{cur}}") )
+      elif [[ "${{cmd}}" == "diff" ]]; then
+        COMPREPLY=( $(compgen -W "--json --no-diff ${{packs}}" -- "${{cur}}") )
       elif [[ "${{cmd}}" == "export" ]]; then
         COMPREPLY=( $(compgen -W "-o --output ${{packs}}" -- "${{cur}}") )
       else
         COMPREPLY=( $(compgen -W "${{packs}}" -- "${{cur}}") )
       fi
+      return 0
+      ;;
+    list|packs)
+      COMPREPLY=( $(compgen -W "--json --help" -- "${{cur}}") )
       return 0
       ;;
     capture|watch)
@@ -84,7 +90,7 @@ _failpack() {{
       return 0
       ;;
     demo)
-      COMPREPLY=( $(compgen -W "--id --no-keep --skip-break" -- "${{cur}}") )
+      COMPREPLY=( $(compgen -W "--id --no-keep --skip-break --fast" -- "${{cur}}") )
       return 0
       ;;
   esac
@@ -156,6 +162,15 @@ _failpack() {{
         show)
           _arguments '--json[JSON output]' '1:pack id:_pack_ids'
           ;;
+        diff)
+          _arguments \\
+            '--json[JSON output]' \\
+            '--no-diff[omit unified diffs]' \\
+            '1:pack id:_pack_ids'
+          ;;
+        list|packs)
+          _arguments '--json[JSON pack index]'
+          ;;
         export)
           _arguments '-o[output path]:path:_files' '--output[output path]:path:_files' \\
             '1:pack id:_pack_ids'
@@ -213,7 +228,8 @@ _failpack() {{
           _arguments \\
             '--id[pack id]:id:' \\
             '--no-keep[remove demo pack]' \\
-            '--skip-break[skip break/restore]'
+            '--skip-break[skip break/restore]' \\
+            '--fast[~60s stranger path]'
           ;;
       esac
       ;;

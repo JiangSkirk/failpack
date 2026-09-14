@@ -8,7 +8,7 @@ Packs live under `packs/<id>/`.
 - `failpack demo --fast` — ~60s wow path (capture → promote → replay)
 - `failpack demo` — full path including intentional break/restore
 - `failpack doctor [--score]` — check env + layout (+ Claude/Cursor soft tips)
-- `failpack list` — list packs (id, status, exit_code, promoted_at)
+- `failpack list` — list packs (id, status, exit_code, promoted_at; `--json` / `packs --json`)
 - `failpack show <id>` — pretty inspect (status, asserts, artifacts; `--json`)
 - `failpack status <id>` — meta + assertion summary
 - `failpack capture <transcript.jsonl|dir>` — ingest a failure session
@@ -18,5 +18,6 @@ Packs live under `packs/<id>/`.
 - `failpack promote --suggest <id>` — preview recommended assertions (add `--write` to apply)
 - `failpack watch <transcript>` — capture → promote → replay (local; same STORY/next: on FAIL)
 - `failpack replay <id>` / `failpack replay --all` — verify assertions in CI
-- `failpack explain <id>` — short FAIL story (+ next: promote --suggest / re-promote)
+- `failpack explain <id>` — short FAIL story (+ next: diff / promote --suggest / re-promote)
+- `failpack diff <id>` — expected vs actual artifact summary (no full replay)
 - `failpack migrate` — stamp pack schema_version (no-op if current)

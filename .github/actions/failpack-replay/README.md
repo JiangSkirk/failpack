@@ -16,10 +16,10 @@ Install FailPack and replay every golden pack under `.failpack/packs/`
 
 ### Other repos (install from GitHub)
 
-**Prefer a release tag** (stable CLI once `v1.2.0` exists):
+**Prefer a release tag** (stable CLI once `v1.3.0` exists):
 
 ```yaml
-- uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.2.0
+- uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.3.0
   with:
     # default install-from is git+https://github.com/JiangSkirk/failpack.git
     run-doctor: "true"
@@ -32,12 +32,12 @@ Install FailPack and replay every golden pack under `.failpack/packs/`
 - uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
 ```
 
-Older tags still available: `@v1.1.0`, `@v1.0.0`.
+Older tags still available: `@v1.2.0`, `@v1.1.0`, `@v1.0.0`.
 
 ### Machine-readable replay
 
 ```yaml
-- uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.2.0
+- uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.3.0
   with:
     json: "true"
 ```

@@ -54,7 +54,8 @@ def cmd_explain(
         out.lines.append(f"RESULT: {'PASS' if report.ok else 'FAIL'}")
         if not report.ok:
             out.lines.append(
-                f"next: failpack promote --suggest {pack_id}  ·  "
+                f"next: failpack diff {pack_id}  ·  "
+                f"failpack promote --suggest {pack_id}  ·  "
                 f"failpack re-promote {pack_id}"
             )
         return out
@@ -93,7 +94,8 @@ def cmd_explain(
     )
     first_id = failed[0].pack_id
     out.lines.append(
-        f"next: failpack promote --suggest {first_id}  ·  "
+        f"next: failpack diff {first_id}  ·  "
+        f"failpack promote --suggest {first_id}  ·  "
         f"failpack re-promote {first_id}"
     )
     return out

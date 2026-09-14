@@ -204,7 +204,7 @@ class ReplayReport:
             # One-line FAIL→FIX loop tip (after RESULT so it's the last thing you see)
             lines.append(
                 f"next: failpack explain {self.pack_id}  ·  "
-                f"failpack promote --suggest {self.pack_id}  ·  "
+                f"failpack diff {self.pack_id}  ·  "
                 f"failpack re-promote {self.pack_id}"
             )
         return lines
@@ -268,7 +268,7 @@ class ReplayAllReport:
             lines.append("  failed packs: " + ", ".join(failed))
             lines.append(
                 "  tip: failpack explain <id>  ·  "
-                "failpack promote --suggest <id>  ·  failpack re-promote <id>"
+                "failpack diff <id>  ·  failpack re-promote <id>"
             )
             # One coherent story per failed pack (keeps --all readable)
             for report in self.reports:
@@ -286,7 +286,7 @@ class ReplayAllReport:
             first = failed[0]
             lines.append(
                 f"next: failpack explain {first}  ·  "
-                f"failpack promote --suggest {first}  ·  "
+                f"failpack diff {first}  ·  "
                 f"failpack re-promote {first}"
             )
         return lines
