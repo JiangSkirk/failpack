@@ -9,7 +9,13 @@ import tempfile
 from pathlib import Path
 
 from failpack.pack import utc_now_iso, write_meta
-from failpack.paths import ARTIFACTS_DIR, PACKS_DIR, TRANSCRIPT_NAME, failpack_dir
+from failpack.paths import (
+    ARTIFACTS_DIR,
+    PACKS_DIR,
+    TRANSCRIPT_NAME,
+    failpack_dir,
+    local_root,
+)
 from failpack.schema import CURRENT_SCHEMA_VERSION, SCHEMA_VERSION_KEY
 from failpack.transcript import load_jsonl, slug_from_summary, summarize_events, write_artifacts
 
@@ -291,10 +297,13 @@ def cmd_capture(
         summary = summarize_events(events)
         pid = pack_id or slug_from_summary(summary, source)
 
-        base = failpack_dir(root)
+        # First-time capture writes under cwd / --root only — never climb into
+        # an ancestor .failpack/ (demo/doctor agreement for nested empty dirs).
+        project = local_root(root)
+        base = failpack_dir(project)
         if not base.is_dir():
             raise FileNotFoundError(
-                f"No {base.name}/ directory under the project root. "
+                f"No {base.name}/ directory under {project}. "
                 "Run `failpack init` (or `failpack demo`) first."
             )
 

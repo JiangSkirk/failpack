@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from failpack.paths import FAILPACK_DIR, PACKS_DIR
+from failpack.paths import FAILPACK_DIR, PACKS_DIR, local_root
 
 CI_WORKFLOW_REL = Path(".github") / "workflows" / "failpack.yml"
 
@@ -71,9 +71,10 @@ Packs live under `packs/<id>/`.
 def cmd_init(root: Path | None = None, *, ci: bool = False) -> tuple[Path, Path | None]:
     """Create ``.failpack/`` layout. With *ci*, also write a starter workflow.
 
-    Returns ``(failpack_dir, ci_workflow_path_or_none)``.
+    Uses cwd or explicit ``--root`` only (``local_root``) — does not climb to
+    an ancestor ``.failpack/``. Returns ``(failpack_dir, ci_workflow_path_or_none)``.
     """
-    base = (root or Path.cwd()).resolve()
+    base = local_root(root)
     fp = base / FAILPACK_DIR
     packs = fp / PACKS_DIR
     packs.mkdir(parents=True, exist_ok=True)

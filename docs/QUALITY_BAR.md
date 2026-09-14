@@ -3,13 +3,14 @@
 Internal checklist. Not marketing copy. Honest gaps between “works for a
 curious stranger on GitHub” and “comfortable asking someone to pay.”
 
-Status as of **1.5.10**: product loop is real (`demo --fast` → capture →
+Status as of **1.5.11**: product loop is real (`demo --fast` → capture →
 promote → replay → CI Action). **Hermetic Claude + Cursor one-shots** are
 pip-first: `failpack demo --claude-hermetic` / `failpack demo --cursor-hermetic`
 (bundled fixtures; no clone / no live agent). Support path is stated. **PyPI
 is live** (`pip install failpack` since 1.5.5). Static homepage + Pages
-workflow shipped — do **not** claim the site is live if it 404s. Sell-ready
-still needs the open items below.
+workflow shipped — do **not** claim the site is live if it 404s. Doctor and
+demo/init/capture agree on cwd-local layout (no ancestor write for the wow
+path). Sell-ready still needs the open items below.
 
 ## Must-have before asking for money
 
