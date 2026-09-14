@@ -19,7 +19,7 @@ FIXTURE="fixtures/claude-code-failure.jsonl"
 PACK_DIR=".failpack/packs/${PACK_ID}"
 ASSERTIONS="${PACK_DIR}/assertions.yaml"
 
-echo "==> 1/8  failpack --version (expect 0.4.x)"
+echo "==> 1/8  failpack --version (expect 0.5.x)"
 failpack --version
 
 echo

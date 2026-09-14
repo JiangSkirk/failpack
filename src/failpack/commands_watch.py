@@ -16,9 +16,11 @@ def cmd_watch(
     root: Path | None = None,
     force: bool = False,
     from_claude_project: Path | None = None,
+    claude_latest: bool = False,
     stdin: bool = False,
     pattern: str | None = None,
     show_diff: bool = True,
+    home: Path | None = None,
 ) -> tuple[str, ReplayReport]:
     """Capture a transcript, promote it golden, then replay.
 
@@ -31,8 +33,10 @@ def cmd_watch(
         root=root,
         force=force,
         from_claude_project=from_claude_project,
+        claude_latest=claude_latest,
         stdin=stdin,
         pattern=pattern,
+        home=home,
     )
     pid = pack.name
     cmd_promote(pid, root=root)

@@ -137,12 +137,21 @@ class ReplayAllReport:
                         lines.append("           diff:")
                         for dline in c.diff.splitlines():
                             lines.append(f"             {dline}")
+        passed = sum(1 for r in self.reports if r.ok)
         failed = [r.pack_id for r in self.reports if not r.ok]
+        total = len(self.reports)
+        lines.append(
+            f"SUMMARY: {passed} passed, {len(failed)} failed "
+            f"({total} golden pack{'s' if total != 1 else ''})"
+        )
+        if failed:
+            lines.append("  failed packs: " + ", ".join(failed))
+            lines.append("  tip: failpack re-promote <id> after intentional fixes")
         result = "PASS" if self.ok else "FAIL"
         lines.append(
             "RESULT: "
             + paint(result, "green" if self.ok else "red", enabled=enabled)
-            + f" ({len(self.reports) - len(failed)}/{len(self.reports)} golden packs passed)"
+            + f" ({passed}/{total} golden packs passed)"
         )
         return lines
 

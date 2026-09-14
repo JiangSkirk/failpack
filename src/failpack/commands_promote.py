@@ -106,3 +106,18 @@ def cmd_promote(pack_id: str, *, root: Path | None = None) -> Path:
     meta["promoted_at"] = utc_now_iso()
     write_meta(pack, with_current_schema(meta))
     return pack
+
+
+def cmd_re_promote(pack_id: str, *, root: Path | None = None) -> Path:
+    """Refresh golden assertions from *current* pack artifacts.
+
+    Common workflow after intentional drift: fix the failure, update artifacts
+    (or accept the new golden signals), then ``failpack re-promote <id>`` so
+    ``assertions.yaml`` + expected snapshots match again.
+    """
+    pack = require_pack(pack_id, root)
+    meta = read_meta(pack)
+    if meta.get("status") not in {"golden", "captured"}:
+        # Still allow refresh when status is odd but pack exists
+        pass
+    return cmd_promote(pack_id, root=root)

@@ -14,12 +14,17 @@ import yaml
 from failpack import __version__
 from failpack.cli import build_parser, main
 from failpack.color import paint, use_color
-from failpack.commands_capture import cmd_capture, find_newest_jsonl, resolve_transcript_path
+from failpack.commands_capture import (
+    cmd_capture,
+    find_claude_latest,
+    find_newest_jsonl,
+    resolve_transcript_path,
+)
 from failpack.commands_doctor import cmd_doctor
 from failpack.commands_init import cmd_init
-from failpack.commands_list import cmd_list
+from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
-from failpack.commands_promote import cmd_promote
+from failpack.commands_promote import cmd_promote, cmd_re_promote
 from failpack.commands_replay import cmd_replay, cmd_replay_all
 from failpack.commands_status import cmd_status
 from failpack.commands_watch import cmd_watch
@@ -411,8 +416,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_0_4_0() -> None:
-    assert __version__ == "0.4.0"
+def test_version_is_0_5_0() -> None:
+    assert __version__ == "0.5.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -597,8 +602,12 @@ def test_replay_all_skips_non_golden_and_fails_on_broken(workspace: Path) -> Non
     bad = cmd_replay_all(root=workspace)
     assert not bad.ok
     assert any(not r.ok for r in bad.reports)
-    summary = "\n".join(bad.summary_lines())
+    summary = "\n".join(bad.summary_lines(color=False))
     assert "RESULT: FAIL" in summary
+    assert "SUMMARY:" in summary
+    assert "1 failed" in summary
+    assert f"failed packs: {DEMO_ID}" in summary
+    assert "re-promote" in summary
 
 
 def test_replay_all_empty_workspace(workspace: Path) -> None:
@@ -606,3 +615,171 @@ def test_replay_all_empty_workspace(workspace: Path) -> None:
     assert report.ok
     assert report.reports == []
     assert "no golden packs" in "\n".join(report.summary_lines()).lower()
+
+
+def _fake_claude_home(tmp_path: Path) -> Path:
+    """Build a fake $HOME with ~/.claude/projects/<proj>/*.jsonl (never real ~/.claude)."""
+    home = tmp_path / "fake-home"
+    project = home / ".claude" / "projects" / "encoded-cwd"
+    project.mkdir(parents=True)
+    older = project / "old-session.jsonl"
+    newer = project / "new-session.jsonl"
+    older.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
+    time.sleep(0.05)
+    newer.write_text(FIXTURE_WRONG_CMD.read_text(encoding="utf-8"), encoding="utf-8")
+    return home
+
+
+def test_find_claude_latest_uses_home_fixture(tmp_path: Path) -> None:
+    home = _fake_claude_home(tmp_path)
+    found = find_claude_latest(home=home)
+    assert found.name == "new-session.jsonl"
+    assert found.is_relative_to(home / ".claude" / "projects")
+
+
+
+def test_capture_claude_latest_with_fake_home(workspace: Path, tmp_path: Path) -> None:
+    home = _fake_claude_home(tmp_path)
+    pack = cmd_capture(
+        None,
+        pack_id="claude-latest-pack",
+        root=workspace,
+        claude_latest=True,
+        home=home,
+    )
+    meta = read_meta(pack)
+    assert meta["id"] == "claude-latest-pack"
+    assert meta["exit_code"] == 4
+    assert meta["source_transcript"].startswith("<claude-latest:")
+
+
+def test_cli_capture_claude_latest_honors_HOME(
+    workspace: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    home = _fake_claude_home(tmp_path)
+    monkeypatch.setenv("HOME", str(home))
+    # Path.home() reads HOME on Unix
+    with pytest.raises(SystemExit) as exc:
+        main(
+            [
+                "--root",
+                str(workspace),
+                "capture",
+                "--claude-latest",
+                "--id",
+                "via-cli",
+            ]
+        )
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "via-cli" in out
+    meta = read_meta(workspace / ".failpack" / "packs" / "via-cli")
+    assert meta["exit_code"] == 4
+
+
+def test_claude_latest_missing_projects_dir(tmp_path: Path) -> None:
+    empty_home = tmp_path / "empty-home"
+    empty_home.mkdir()
+    with pytest.raises(FileNotFoundError, match=r"\.claude/projects"):
+        find_claude_latest(home=empty_home)
+
+
+def test_claude_latest_conflicts_with_path(workspace: Path, tmp_path: Path) -> None:
+    home = _fake_claude_home(tmp_path)
+    with pytest.raises(ValueError, match="only one"):
+        resolve_transcript_path(FIXTURE, claude_latest=True, home=home)
+
+
+def test_re_promote_refreshes_assertions_after_intentional_fix(workspace: Path) -> None:
+    _capture_and_promote(workspace)
+    pack = workspace / ".failpack" / "packs" / DEMO_ID
+    error_path = pack / "artifacts" / "error.txt"
+    original = error_path.read_text(encoding="utf-8")
+    error_path.write_text(original + "\nINTENTIONAL_NEW_SIGNAL\n", encoding="utf-8")
+
+    broken = cmd_replay(DEMO_ID, root=workspace)
+    assert not broken.ok
+
+    # Intentionally accept the new golden: re-promote from current artifacts
+    cmd_re_promote(DEMO_ID, root=workspace)
+    assertions = yaml.safe_load((pack / "assertions.yaml").read_text(encoding="utf-8"))
+    # Fingerprint for error.txt should match the mutated file
+    from failpack.pack import sha256_file as _sha
+
+    err_fp = next(f for f in assertions["fingerprints"] if f["path"] == "artifacts/error.txt")
+    assert err_fp["sha256"] == _sha(error_path)
+    assert (pack / "expected" / "artifacts" / "error.txt").read_text(
+        encoding="utf-8"
+    ) == error_path.read_text(encoding="utf-8")
+
+    ok = cmd_replay(DEMO_ID, root=workspace)
+    assert ok.ok, "\n".join(ok.summary_lines())
+
+
+def test_cli_re_promote(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _capture_and_promote(workspace)
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "re-promote", DEMO_ID])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "Re-promoted" in out
+    assert DEMO_ID in out
+
+
+def test_list_format_table_is_aligned() -> None:
+    rows = cmd_list(REPO)
+    table = format_table(rows)
+    assert table
+    assert table[0].startswith("ID")
+    assert "STATUS" in table[0]
+    assert all("\t" not in line for line in table)  # space-aligned, not TSV
+    body = "\n".join(table)
+    assert DEMO_ID in body
+    assert "golden" in body
+
+
+def test_cli_list_prints_table(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["list"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "ID" in out
+    assert "STATUS" in out
+    assert DEMO_ID in out
+    # No progress spinner / percent noise
+    assert "%" not in out
+    assert "…" not in out
+
+
+def test_help_mentions_claude_latest_and_re_promote() -> None:
+    parser = build_parser()
+    help_text = parser.format_help()
+    assert "--claude-latest" in help_text or "claude-latest" in help_text
+    assert "re-promote" in help_text
+    cap_help = None
+    for action in parser._subparsers._group_actions:  # noqa: SLF001
+        for name, sub in action.choices.items():
+            if name == "capture":
+                cap_help = sub.format_help()
+    assert cap_help is not None
+    assert "--claude-latest" in cap_help
+
+
+def test_examples_docs_exist() -> None:
+    demo = REPO / "examples" / "five-minute-demo.sh"
+    assert demo.is_file()
+    text = demo.read_text(encoding="utf-8")
+    assert "0.5" in text or "failpack --version" in text
+    claude_doc = REPO / "examples" / "claude-latest-demo.md"
+    assert claude_doc.is_file()
+    body = claude_doc.read_text(encoding="utf-8")
+    assert "--claude-latest" in body
+    assert "re-promote" in body
+
+
+def test_changelog_and_contributing_exist() -> None:
+    assert (REPO / "CHANGELOG.md").is_file()
+    assert (REPO / "CONTRIBUTING.md").is_file()
+    changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "0.5.0" in changelog
+    assert "0.4.0" in changelog

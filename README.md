@@ -24,7 +24,7 @@ pip install -e ".[dev]"
 Then confirm:
 
 ```bash
-failpack --version   # → failpack 0.4.0
+failpack --version   # → failpack 0.5.0
 failpack doctor
 ```
 
@@ -32,20 +32,22 @@ failpack doctor
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
-## What you get (v0.4)
+## What you get (v0.5)
 
 | Command | What it does |
 |---|---|
 | `failpack init` | Create `.failpack/` layout |
 | `failpack init --ci` | Also write a starter workflow that uses the composite action |
 | `failpack doctor` | Check env + workspace; print actionable fixes |
-| `failpack list` | List packs (id, status, exit_code, promoted_at) |
+| `failpack list` | Clean aligned table of packs (id, status, exit, promoted_at) |
 | `failpack status <id>` | Show meta + assertion summary for one pack |
+| `failpack capture --claude-latest` | **Magic path:** newest Claude Code session under `~/.claude/projects` |
 | `failpack capture <transcript.jsonl\|dir>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
 | `failpack promote <id>` | Mark golden + write `assertions.yaml` (+ expected text snapshots) |
+| `failpack re-promote <id>` | Refresh assertions from **current** artifacts after intentional fix |
 | `failpack watch <transcript>` | Capture → promote → replay (local; exit 1 on fail) |
 | `failpack replay <id>` | Verify assertions; **exit 0** on pass, **non-zero** on fail |
-| `failpack replay --all` | Replay every golden pack; **exit non-zero** if any fail |
+| `failpack replay --all` | Replay every golden pack; **SUMMARY** of fails; exit non-zero if any fail |
 | `failpack replay … --json` | Machine-readable JSON (same exit codes) |
 | `failpack replay … --no-diff` | Disable unified diffs under fingerprint FAIL blocks |
 | `failpack migrate` | Stamp `schema_version` (no-op message if already current) |
@@ -76,10 +78,20 @@ Five-minute walkthrough (capture → promote → replay → intentional break �
 ./examples/five-minute-demo.sh
 ```
 
+Claude latest magic path (screenshots-as-text):
+
+```bash
+# see examples/claude-latest-demo.md
+failpack capture --claude-latest --id my-failure
+```
+
 ### Capture your own failure
 
 ```bash
 failpack init
+
+# magic: newest Claude Code session under ~/.claude/projects
+failpack capture --claude-latest --id my-failure
 
 # path to a fixture / exported transcript
 failpack capture fixtures/claude-code-failure.jsonl --id my-failure
@@ -100,11 +112,25 @@ failpack promote my-failure
 failpack replay my-failure
 failpack replay my-failure --json   # machine output
 
+# after intentional drift / fix — refresh golden assertions
+failpack re-promote my-failure
+
 # one-shot local loop (useful before committing docs/fixtures)
 failpack watch fixtures/claude-code-failure.jsonl --id my-failure --force
+# or: failpack watch --claude-latest --id my-failure --force
 ```
 
-Break a golden assertion (or mutate an artifact under `.failpack/packs/<id>/artifacts/`) and `failpack replay` exits non-zero — that is the CI signal.
+Break a golden assertion (or mutate an artifact under `.failpack/packs/<id>/artifacts/`) and `failpack replay` exits non-zero — that is the CI signal. When the new signals are intentional, `failpack re-promote <id>` refreshes assertions from current artifacts.
+
+### Cursor-ish transcripts (manual)
+
+FailPack does not auto-scan Cursor installs. Export or copy a JSONL transcript, then:
+
+```bash
+failpack capture /path/to/exported-session.jsonl --id cursor-fail
+```
+
+See [`examples/claude-latest-demo.md`](examples/claude-latest-demo.md) for details.
 
 ### Pre-commit
 
@@ -143,7 +169,7 @@ This repo's workflow dogfoods the same action (see [`.github/workflows/failpack-
     transcript.jsonl
     artifacts/          # exit_code, error, written files, digest
     expected/           # promote-time text snapshots (for FAIL diffs)
-    assertions.yaml     # written by promote
+    assertions.yaml     # written by promote / re-promote
 ```
 
 Assertions cover:
@@ -175,6 +201,7 @@ FailPack is intentionally narrow: **capture the failure you already saw**, promo
 - **Not AgentClash / eval platforms** — FailPack is not a multi-run agent benchmark harness.
 - **Not Agentshield** — FailPack is not a security scanner, policy gate, or prompt firewall.
 - **Not your agent** — zero coupling to Echo, Orin, titan-agent, or any live agent install. Fixtures only.
+- **Not a paid product surface** — no monetization in this line of work; the open CLI is the product.
 
 ## Development
 
@@ -186,6 +213,8 @@ failpack doctor
 failpack replay --all --json
 failpack migrate
 ```
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`CHANGELOG.md`](CHANGELOG.md).
 
 Requires Python 3.11+.
 

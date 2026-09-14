@@ -10,9 +10,9 @@ from failpack import __version__
 from failpack.commands_capture import cmd_capture
 from failpack.commands_doctor import cmd_doctor
 from failpack.commands_init import cmd_init
-from failpack.commands_list import cmd_list
+from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
-from failpack.commands_promote import cmd_promote
+from failpack.commands_promote import cmd_promote, cmd_re_promote
 from failpack.commands_replay import cmd_replay, cmd_replay_all
 from failpack.commands_status import cmd_status
 from failpack.commands_watch import cmd_watch
@@ -30,10 +30,13 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack doctor\n"
+            "  failpack capture --claude-latest --id my-failure\n"
             "  failpack capture fixtures/claude-code-failure.jsonl --id my-failure\n"
             "  failpack promote my-failure\n"
+            "  failpack re-promote my-failure\n"
             "  failpack replay my-failure\n"
             "  failpack replay --all\n"
+            "  failpack list\n"
             "  failpack watch fixtures/claude-code-failure.jsonl --id my-failure\n"
             "  failpack migrate\n"
             "  failpack init --ci\n"
@@ -81,7 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_list = sub.add_parser(
         "list",
-        help="List packs under .failpack/packs/",
+        help="List packs under .failpack/packs/ (clean table)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="examples:\n  failpack list\n",
     )
@@ -102,14 +105,16 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
+            "  failpack capture --claude-latest --id my-failure\n"
             "  failpack capture fixtures/claude-code-failure.jsonl --id my-failure\n"
             "  failpack capture ~/.claude/projects --id my-failure\n"
             "  failpack capture --from-claude-project ~/.claude/projects\n"
             "  failpack capture --stdin < session.jsonl\n"
             "  failpack capture 'fixtures/*.jsonl' --id from-glob\n"
             "\n"
-            "tip: a directory argument picks the newest *.jsonl underneath\n"
-            "(Claude Code sessions are often under ~/.claude/projects).\n"
+            "magic: --claude-latest finds the newest *.jsonl under\n"
+            "~/.claude/projects (Claude Code). A bare directory argument also\n"
+            "picks the newest *.jsonl underneath.\n"
         ),
     )
     p_cap.add_argument(
@@ -124,6 +129,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_cap.add_argument("--id", dest="pack_id", default=None, help="Pack id (default: from transcript)")
     p_cap.add_argument("--force", action="store_true", help="Overwrite existing pack")
+    p_cap.add_argument(
+        "--claude-latest",
+        action="store_true",
+        help="Discover newest Claude Code session under ~/.claude/projects",
+    )
     p_cap.add_argument(
         "--from-claude-project",
         type=Path,
@@ -149,10 +159,29 @@ def build_parser() -> argparse.ArgumentParser:
         "promote",
         help="Mark pack golden and write assertions.yaml",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="examples:\n  failpack promote my-failure\n",
+        epilog=(
+            "examples:\n"
+            "  failpack promote my-failure\n"
+            "  failpack re-promote my-failure   # refresh after intentional fix\n"
+        ),
     )
     p_prom.add_argument("pack_id", help="Pack id under .failpack/packs/")
     p_prom.set_defaults(func=_handle_promote)
+
+    p_reprom = sub.add_parser(
+        "re-promote",
+        help="Refresh golden assertions from current artifacts (after intentional fix)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack re-promote my-failure\n"
+            "\n"
+            "Use after replay FAIL when the new artifact signals are intentional:\n"
+            "rewrites assertions.yaml + expected/ snapshots from current artifacts.\n"
+        ),
+    )
+    p_reprom.add_argument("pack_id", help="Pack id under .failpack/packs/")
+    p_reprom.set_defaults(func=_handle_re_promote)
 
     p_watch = sub.add_parser(
         "watch",
@@ -161,6 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack watch fixtures/claude-code-failure.jsonl --id my-failure\n"
+            "  failpack watch --claude-latest --id latest --force\n"
             "  failpack watch ~/.claude/projects --id latest --force\n"
             "\n"
             "On replay FAIL, prints explain (expected/actual/hint + optional diff) and exits 1.\n"
@@ -175,6 +205,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_watch.add_argument("--id", dest="pack_id", default=None, help="Pack id (default: from transcript)")
     p_watch.add_argument("--force", action="store_true", help="Overwrite existing pack")
+    p_watch.add_argument(
+        "--claude-latest",
+        action="store_true",
+        help="Discover newest Claude Code session under ~/.claude/projects",
+    )
     p_watch.add_argument(
         "--from-claude-project",
         type=Path,
@@ -213,6 +248,7 @@ def build_parser() -> argparse.ArgumentParser:
             "(e.g. re-promote after intentional change / artifact drifted — inspect path).\n"
             "Fingerprint failures also show a short unified diff of expected vs actual\n"
             "artifact text when a promote-time snapshot exists (disable with --no-diff).\n"
+            "replay --all ends with SUMMARY (passed/failed counts) and failed pack ids.\n"
             "Colors are on for TTYs; set NO_COLOR=1 to disable.\n"
         ),
     )
@@ -277,9 +313,7 @@ def _handle_list(args: argparse.Namespace) -> int:
     if not rows:
         print("No packs found under .failpack/packs/")
         return 0
-    print("ID\tSTATUS\tEXIT\tPROMOTED_AT")
-    for row in rows:
-        print(row.format_line())
+    print("\n".join(format_table(rows)))
     return 0
 
 
@@ -296,6 +330,7 @@ def _handle_capture(args: argparse.Namespace) -> int:
         root=args.root,
         force=args.force,
         from_claude_project=args.from_claude_project,
+        claude_latest=args.claude_latest,
         stdin=args.stdin,
         pattern=args.pattern,
     )
@@ -309,6 +344,15 @@ def _handle_promote(args: argparse.Namespace) -> int:
     return 0
 
 
+def _handle_re_promote(args: argparse.Namespace) -> int:
+    pack = cmd_re_promote(args.pack_id, root=args.root)
+    print(
+        f"Re-promoted pack '{pack.name}' — refreshed assertions from current artifacts "
+        f"({pack / 'assertions.yaml'})"
+    )
+    return 0
+
+
 def _handle_watch(args: argparse.Namespace) -> int:
     pid, report = cmd_watch(
         args.transcript,
@@ -316,6 +360,7 @@ def _handle_watch(args: argparse.Namespace) -> int:
         root=args.root,
         force=args.force,
         from_claude_project=args.from_claude_project,
+        claude_latest=args.claude_latest,
         stdin=args.stdin,
         pattern=args.pattern,
         show_diff=not args.no_diff,
