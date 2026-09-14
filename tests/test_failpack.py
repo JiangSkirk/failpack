@@ -549,7 +549,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_3_0() -> None:
-    assert __version__ == "1.4.0"
+    assert __version__ == "1.5.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -745,6 +745,22 @@ def test_list_and_packs_json(workspace: Path, capsys: pytest.CaptureFixture[str]
     assert alias == rows
 
 
+def test_cli_list_empty_prints_next_tip(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    cmd_init(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(tmp_path), "list"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "No packs found" in out
+    assert "demo --fast" in out
+    assert "capture --claude-latest" in out
+
+    with pytest.raises(SystemExit) as empty_json:
+        main(["--root", str(tmp_path), "list", "--json"])
+    assert empty_json.value.code == 0
+    assert json.loads(capsys.readouterr().out) == []
+
+
 def test_init_ci_writes_workflow(tmp_path: Path) -> None:
     fp, workflow = cmd_init(tmp_path, ci=True)
     assert fp.is_dir()
@@ -753,7 +769,7 @@ def test_init_ci_writes_workflow(tmp_path: Path) -> None:
     text = workflow.read_text(encoding="utf-8")
     assert "failpack-replay" in text
     assert "JiangSkirk/failpack" in text
-    assert "@v1.3.0" in text
+    assert "@v1.4.0" in text
     tip = (fp / "README.md").read_text(encoding="utf-8")
     assert "failpack demo" in tip
     assert "--claude-latest" in tip
@@ -1074,7 +1090,7 @@ def test_examples_docs_exist() -> None:
     assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "cursor-projects" in walk_body
     assert "~/.local/bin" in walk_body
-    assert "RELEASE_NOTES_1.3.0" in walk_body or "v1.3.0" in walk_body
+    assert "RELEASE_NOTES_1.4.0" in walk_body or "v1.4.0" in walk_body
     assert "failpack diff" in walk_body or "list --json" in walk_body or "packs --json" in walk_body
 
 
@@ -1082,6 +1098,7 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.5.0" in changelog
     assert "1.4.0" in changelog
     assert "1.3.0" in changelog
     assert "1.2.0" in changelog
@@ -1092,10 +1109,11 @@ def test_changelog_and_contributing_exist() -> None:
     assert "next:" in changelog
     assert "Daily loop" in changelog or "watch" in changelog.lower()
     assert "PUBLISH.md" in changelog
+    assert "QUALITY_BAR.md" in changelog
     assert "--fast" in changelog
     assert "failpack diff" in changelog
     assert "list --json" in changelog or "packs --json" in changelog
-    assert "@v1.3.0" in changelog
+    assert "@v1.4.0" in changelog
     assert "60s" in changelog or "~60" in changelog
     assert "one-shot" in changelog.lower() or "claude-latest" in changelog
     assert "--suggest" in changelog
@@ -1303,11 +1321,10 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
+    assert "1.5.0" in text
     assert "1.4.0" in text
     assert "1.3.0" in text
     assert "1.2.0" in text
-    assert "1.1.0" in text
-    assert "1.0.0" in text
     assert "doctor --score" in text
     assert 'git+https://github.com/JiangSkirk/failpack.git' in text
     assert "~60-second path" in text or "demo --fast" in text
@@ -1327,18 +1344,27 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "Claude one-shot" in text or "one-shot" in text.lower()
     assert "STRANGER_WALKTHROUGH" in text
     assert "badge.svg" in text
-    assert "@v1.3.0" in text
+    assert "@v1.4.0" in text
+    assert "regression memory" in text.lower()
     assert "Stet" in text
     assert "AgentClash" in text
     assert "stunning" not in text.lower()
     assert (REPO / "docs" / "PACKS.md").is_file()
     assert (REPO / "docs" / "PUBLISH.md").is_file()
+    assert (REPO / "docs" / "QUALITY_BAR.md").is_file()
+    quality = (REPO / "docs" / "QUALITY_BAR.md").read_text(encoding="utf-8")
+    assert "PyPI" in quality
+    assert "real-user" in quality.lower() or "real user" in quality.lower()
     publish = (REPO / "docs" / "PUBLISH.md").read_text(encoding="utf-8")
     assert "python -m build" in publish
     assert "twine" in publish
     assert "testpypi" in publish.lower() or "TestPyPI" in publish
     packs = (REPO / "docs" / "PACKS.md").read_text(encoding="utf-8")
     assert "demo-missing-import" in packs
+    assert (REPO / "RELEASE_NOTES_1.4.0.md").is_file()
+    notes14 = (REPO / "RELEASE_NOTES_1.4.0.md").read_text(encoding="utf-8")
+    assert "1.4.0" in notes14
+    assert "failpack diff" in notes14
     assert (REPO / "RELEASE_NOTES_1.3.0.md").is_file()
     notes13 = (REPO / "RELEASE_NOTES_1.3.0.md").read_text(encoding="utf-8")
     assert "1.3.0" in notes13
@@ -1357,10 +1383,10 @@ def test_readme_has_three_command_happy_path() -> None:
     action_readme = (REPO / ".github" / "actions" / "failpack-replay" / "README.md").read_text(
         encoding="utf-8"
     )
-    assert "@v1.3.0" in action_readme
+    assert "@v1.4.0" in action_readme
     assert "@main" in action_readme
     other_ci = (REPO / "examples" / "other-repo-ci.yml").read_text(encoding="utf-8")
-    assert "@v1.3.0" in other_ci
+    assert "@v1.4.0" in other_ci
 
 
 def test_rm_refuses_golden_without_force(workspace: Path) -> None:

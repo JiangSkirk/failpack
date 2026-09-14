@@ -96,18 +96,19 @@ class DiffReport:
             f"  summary: {self.matched} match, {self.differed} differ "
             f"({len(self.files)} snapshot(s))"
         )
-        if not self.ok:
-            lines.append(
-                f"  next: failpack explain {self.pack_id}  ·  "
-                f"failpack re-promote {self.pack_id}  ·  "
-                f"failpack promote --suggest {self.pack_id}"
-            )
         result = (
             paint("RESULT: PASS", "green", enabled=enabled)
             if self.ok
             else paint("RESULT: FAIL", "red", enabled=enabled)
         )
         lines.append(result)
+        if not self.ok:
+            # Same order as replay/explain: RESULT first, then next: tip last.
+            lines.append(
+                f"next: failpack explain {self.pack_id}  ·  "
+                f"failpack re-promote {self.pack_id}  ·  "
+                f"failpack promote --suggest {self.pack_id}"
+            )
         return lines
 
     def to_dict(self) -> dict[str, Any]:

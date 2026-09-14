@@ -13,10 +13,10 @@ repo checkout). Target: **about a minute** to first PASS after install.
 $ pip install "git+https://github.com/JiangSkirk/failpack.git"
 Collecting git+https://github.com/JiangSkirk/failpack.git
   …
-Successfully installed failpack-1.4.0 …
+Successfully installed failpack-1.5.0 …
 
 $ failpack --version
-failpack 1.4.0
+failpack 1.5.0
 ```
 
 Editable checkout (optional, for contributing):
@@ -26,7 +26,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.4.0
+failpack 1.5.0
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -39,7 +39,7 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --fast
-failpack demo --fast  (~60s wow)  ·  failpack 1.4.0
+failpack demo --fast  (~60s wow)  ·  failpack 1.5.0
 
 ==> 1/3  capture bundled fixture → 'demo-five-minute'
 Captured pack 'demo-five-minute' → …/.failpack/packs/demo-five-minute
@@ -163,5 +163,6 @@ failpack lint
 - [`five-minute-demo.sh`](five-minute-demo.sh) — delegates to `failpack demo`
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
-- [`../RELEASE_NOTES_1.3.0.md`](../RELEASE_NOTES_1.3.0.md) — tagged GitHub Release `v1.3.0`
+- [`../RELEASE_NOTES_1.4.0.md`](../RELEASE_NOTES_1.4.0.md) — tagged GitHub Release `v1.4.0`
+- [`../docs/QUALITY_BAR.md`](../docs/QUALITY_BAR.md) — honest sell-ready gaps
 - [`../CHANGELOG.md`](../CHANGELOG.md)

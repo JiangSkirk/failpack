@@ -1,6 +1,6 @@
 [project]
 name = "failpack"
-version = "1.4.0"
+version = "1.5.0"
 description = "Turn coding-agent failure sessions into golden CI regression packs"
 readme = "README.md"
 requires-python = ">=3.11"

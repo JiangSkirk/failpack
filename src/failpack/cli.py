@@ -235,7 +235,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack list --json\n"
             "\n"
             "`list --json` is the stable machine-readable pack index for tooling.\n"
-            "(`failpack packs --json` is an alias.)\n"
+            "(`failpack packs` / `packs --json` is the same command.)\n"
+            "Exit 0 when `.failpack/` exists (empty list → message or `[]`).\n"
         ),
     )
     p_list.add_argument(
@@ -254,7 +255,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack packs\n"
             "  failpack packs --json\n"
             "\n"
-            "Same output as `failpack list` / `failpack list --json`.\n"
+            "Same output and exit codes as `failpack list` / `failpack list --json`.\n"
         ),
     )
     p_packs.add_argument(
@@ -573,7 +574,9 @@ def build_parser() -> argparse.ArgumentParser:
             "\n"
             "Compares promote-time expected/ snapshots to current artifacts.\n"
             "Does not run assertion replay — use after explain when you want the\n"
-            "text drift without a full check dump. Exit 0 when all match.\n"
+            "text drift without a full check dump.\n"
+            "Exit 0 when all match; non-zero when any snapshot differs "
+            "(same as replay).\n"
         ),
     )
     p_diff.add_argument("pack_id", help="Pack id under .failpack/packs/")
@@ -772,6 +775,7 @@ def _handle_list(args: argparse.Namespace) -> int:
         return 0
     if not rows:
         print("No packs found under .failpack/packs/")
+        print("Next: failpack demo --fast  ·  failpack capture --claude-latest --id my-failure")
         return 0
     print("\n".join(format_table(rows)))
     return 0

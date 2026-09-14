@@ -5,6 +5,31 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-09-14
+
+### Added
+
+- GitHub Release **`v1.4.0`** + [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md).
+- Action docs / examples / `init --ci` pin **`@v1.4.0`** (keep `@main` as
+  alternative).
+- **[`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md)** — honest internal checklist of
+  what “done enough to sell” still needs (PyPI token, real-user packs, …).
+
+### Changed
+
+- Version bump to **1.5.0**.
+- README top pitch tightened to a ~30-second “why FailPack” (still leads with
+  install → `demo --fast`; no hype adjectives).
+- CLI clarity: `diff` FAIL **`next:`** tip order matches replay/explain
+  (RESULT first); `diff` / `list` / `packs` help document exit codes; empty
+  `list` prints a `demo --fast` / capture next tip.
+
+### Notes
+
+- Quality-freeze prep only — no big new features.
+- Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
+  without a token in env.
+
 ## [1.4.0] — 2026-09-14
 
 ### Added
