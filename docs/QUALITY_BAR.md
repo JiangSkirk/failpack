@@ -3,7 +3,7 @@
 Internal checklist. Not marketing copy. Honest gaps between “works for a
 curious stranger on GitHub” and “comfortable asking someone to pay.”
 
-Status as of **1.5.3**: product loop is real (`demo --fast` → capture →
+Status as of **1.5.4**: product loop is real (`demo --fast` → capture →
 promote → replay → CI Action). Support path is stated. Sell-ready still needs
 the open items below.
 

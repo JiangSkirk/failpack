@@ -88,7 +88,7 @@ def _run_fast_demo(
         _emit(report, "")
         if keep:
             _emit(report, f"Done (~60s). Demo pack left at {pack} (status=golden).")
-            _emit(report, f"Clean up with:  rm -rf {pack}")
+            _emit(report, f"Clean up with:  failpack rm {pack_id} --force")
         else:
             shutil.rmtree(pack)
             report.pack_dir = pack
@@ -210,7 +210,7 @@ def cmd_demo(
         _emit(report, "")
         if keep:
             _emit(report, f"Done. Demo pack left at {pack} (status=golden).")
-            _emit(report, f"Clean up with:  rm -rf {pack}")
+            _emit(report, f"Clean up with:  failpack rm {pack_id} --force")
         else:
             shutil.rmtree(pack)
             report.pack_dir = pack

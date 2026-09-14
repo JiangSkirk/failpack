@@ -5,6 +5,31 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.4] — 2026-09-14
+
+### Fixed
+
+- `failpack demo` / `demo --fast` cleanup tip now recommends
+  `failpack rm <id> --force` instead of absolute-path `rm -rf` (CLI path;
+  avoids bypassing pack lifecycle).
+- Empty-project `failpack doctor` tips lead with `failpack demo --fast` (or
+  `failpack init`). When the only hard miss is never-initialized layout,
+  RESULT is **NEEDS SETUP** (+ `next:` tip) instead of screaming FAIL.
+  `--strict` still exits non-zero; layout remains not OK.
+
+### Changed
+
+- Version bump to **1.5.4**.
+- Docs / walkthrough / QUALITY_BAR version samples → **1.5.4**.
+- Stranger walkthrough cleanup sample uses `failpack rm … --force`.
+
+### Notes
+
+- Quality-freeze thickening only. Action pin stays **`@v1.5.0`** (no Action
+  behavior change).
+- Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
+  without a token in env.
+
 ## [1.5.3] — 2026-09-14
 
 ### Fixed

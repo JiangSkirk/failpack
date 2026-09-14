@@ -15,7 +15,7 @@ Requires Python **3.11+**.
 
 ```bash
 pip install -e ".[dev]"
-failpack --version   # → failpack 1.5.3
+failpack --version   # → failpack 1.5.4
 failpack doctor --score
 failpack demo --fast         # ~60s stranger wow path (recommended)
 failpack demo --skip-break   # optional full local wow path without break
