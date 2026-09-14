@@ -34,7 +34,7 @@ failpack demo --fast          # ~60s wow without an agent
 
 ```bash
 pip install -e ".[dev]"
-failpack --version    # failpack 1.5.2+
+failpack --version    # failpack 1.5.3+
 failpack doctor       # tips --claude-latest when sessions exist
 failpack init         # if this repo isn't already initialized
 ```

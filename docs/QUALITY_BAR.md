@@ -3,7 +3,7 @@
 Internal checklist. Not marketing copy. Honest gaps between “works for a
 curious stranger on GitHub” and “comfortable asking someone to pay.”
 
-Status as of **1.5.2**: product loop is real (`demo --fast` → capture →
+Status as of **1.5.3**: product loop is real (`demo --fast` → capture →
 promote → replay → CI Action). Support path is stated. Sell-ready still needs
 the open items below.
 
@@ -44,6 +44,11 @@ failpack lint
 failpack replay --all
 pytest -q
 ```
+
+`demo --fast` may leave `.failpack/packs/demo-five-minute` in a repo
+checkout. That is expected for the stranger wow path; tests must tolerate the
+extra golden (do not hardcode an exact pack inventory of 4). Optional cleanup:
+`failpack rm demo-five-minute --force`.
 
 When the must-have table is green, freeze the tag and ship the sell page.
 Until then: polish the open CLI, do not fake readiness.

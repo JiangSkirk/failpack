@@ -5,6 +5,31 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] — 2026-09-14
+
+### Fixed
+
+- Doctor / pack-count tests no longer assert exact `"4 pack"` / `"4 golden"`
+  against the live REPO packs tree. They assert shipped fixture goldens by id
+  and tolerate extra goldens left by `failpack demo --fast` (`demo-five-minute`),
+  so the acceptance path `demo --fast` then `pytest` stays green.
+
+### Changed
+
+- Version bump to **1.5.3**.
+- [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md): smoke section notes demo may
+  leave a pack; tests must not break because of it. Sell gaps still honest
+  (PyPI / real-user packs / unpaid stranger walkthrough open).
+- Docs / walkthrough version samples → **1.5.3**.
+
+### Notes
+
+- Quality-freeze thickening only. Action pin stays **`@v1.5.0`** (no Action
+  behavior change). Demo happy-path still writes under `.failpack/` (stranger
+  wow path unchanged).
+- Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
+  without a token in env.
+
 ## [1.5.2] — 2026-09-14
 
 ### Added
