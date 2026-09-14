@@ -5,7 +5,7 @@
 #
 # Prefer a release tag (stable CLI). @main is an alternative that tracks tip.
 #
-#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.4.0
+#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.5.0
 #   uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
 
 name: FailPack regression replay
@@ -23,7 +23,7 @@ jobs:
       # Install FailPack from GitHub and replay every golden pack.
       # Defaults: run-lint=true, step-summary=true (failpack report --github),
       # run-doctor=true.
-      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.4.0
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.5.0
         with:
           # Optional overrides:
           # python-version: "3.12"

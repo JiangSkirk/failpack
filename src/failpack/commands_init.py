@@ -11,7 +11,7 @@ CI_WORKFLOW_REL = Path(".github") / "workflows" / "failpack.yml"
 CI_WORKFLOW_TEMPLATE = """\
 # Written by `failpack init --ci`.
 # Prefer pinning the action to a release tag (stable CLI):
-#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.4.0
+#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.5.0
 # @main tracks the tip of the default branch (may move).
 name: FailPack regression replay
 
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.4.0
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.5.0
         with:
           # This repo: install from the checkout. Other repos: omit install-from
           # (defaults to git+https://github.com/JiangSkirk/failpack.git).
