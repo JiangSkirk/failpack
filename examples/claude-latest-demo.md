@@ -71,7 +71,7 @@ failpack demo --claude-hermetic         # prove --claude-latest hermetically
 
 ```bash
 pip install failpack   # or: pip install -e ".[dev]"
-failpack --version    # failpack 1.5.10+
+failpack --version    # failpack 1.5.11+
 failpack doctor       # tips hermetic path when no sessions; --claude-latest when sessions exist
 failpack init         # if this repo isn't already initialized
 ```

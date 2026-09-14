@@ -5,6 +5,35 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.11] — 2026-09-14
+
+### Changed
+
+- **Cwd-local wow path** — `failpack demo`, `init`, and first-time `capture`
+  prefer **cwd** (or explicit `--root`) and do **not** silently write packs
+  into an ancestor `.failpack/` when the current directory has no local layout.
+  Nested empty accept dirs (parent has packs; cwd does not) now get a local
+  `.failpack/` so `demo --fast` PASS and `doctor` RESULT: OK agree.
+- Shared helper: `local_root` (doctor’s `doctor_root` is an alias). List /
+  replay / status / promote of an already-discovered project still climb via
+  `find_root`.
+- Version bump to **1.5.11**.
+- Docs / walkthrough / site version samples → **1.5.11**.
+
+### Added
+
+- GitHub Release **`v1.5.11`** + [`RELEASE_NOTES_1.5.11.md`](RELEASE_NOTES_1.5.11.md).
+- Tests: nested empty cwd under a parent with `.failpack/` → `demo --fast`
+  creates local packs; doctor becomes OK; ancestor packs unchanged; capture
+  without local layout does not climb.
+
+### Notes
+
+- Completes the 1.5.10 doctor stranger-friction fix for the write path.
+  Action pin stays **`@v1.5.0`**. **Do not upload to PyPI from this agent.**
+- Zero coupling to Echo / Orin / titan-agent. No live Creem / KYC / pay links.
+  Do **not** claim GitHub Pages is live if it still 404s.
+
 ## [1.5.10] — 2026-09-14
 
 ### Changed

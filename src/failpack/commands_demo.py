@@ -17,7 +17,7 @@ from failpack.commands_migrate import cmd_migrate
 from failpack.commands_promote import cmd_promote
 from failpack.commands_replay import cmd_replay
 from failpack.commands_status import cmd_status
-from failpack.paths import find_root, packs_dir
+from failpack.paths import local_root, packs_dir
 
 DEMO_PACK_ID = "demo-five-minute"
 DEMO_FIXTURE_RESOURCE = "demo-failure.jsonl"
@@ -415,7 +415,9 @@ def cmd_demo(
             "Use only one of: --claude-hermetic or --cursor-hermetic."
         )
 
-    project = find_root(root) if root is None else root.resolve()
+    # Prefer cwd / explicit --root — do not silently write packs into an
+    # ancestor .failpack/ (stranger accept friction under nested empty dirs).
+    project = local_root(root)
     if not packs_dir(project).is_dir():
         cmd_init(project)
 

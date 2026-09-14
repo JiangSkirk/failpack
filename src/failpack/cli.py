@@ -166,6 +166,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack demo --cursor-hermetic\n"
             '  (git fallback: pip install "git+https://github.com/JiangSkirk/failpack.git")\n'
             "Bundled fixtures ship in the wheel (no clone needed).\n"
+            "Writes .failpack/ under cwd (or --root) — does not climb to an\n"
+            "ancestor layout. After demo, doctor in the same cwd should be OK.\n"
         ),
     )
     p_demo.add_argument(

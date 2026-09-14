@@ -24,7 +24,7 @@ environment.** Do not re-upload an already-published version.
 ## Prerequisites
 
 - Python **3.11+**
-- A clean checkout on the release tag (e.g. `v1.5.10`)
+- A clean checkout on the release tag (e.g. `v1.5.11`)
 - Build tools:
 
 ```bash
@@ -35,7 +35,7 @@ python -m pip install -U build twine
 
 ```bash
 grep -E '^version|^__version__' pyproject.toml src/failpack/__init__.py
-# both should match the release (e.g. 1.5.10)
+# both should match the release (e.g. 1.5.11)
 
 failpack --version   # after editable install
 ```
