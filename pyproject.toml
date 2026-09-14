@@ -1,0 +1,33 @@
+[project]
+name = "failpack"
+version = "0.1.0"
+description = "Turn coding-agent failure sessions into golden CI regression packs"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "FailPack" }]
+keywords = ["ci", "regression", "coding-agent", "golden-pack"]
+dependencies = [
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+failpack = "failpack.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+]
