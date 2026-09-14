@@ -4,25 +4,30 @@
 
 **FailPack** turns a coding-agent **failure session** into a **golden CI regression pack**.
 
-Capture a bad agent run once → promote it to golden → replay the assertions in CI so the same failure class cannot quietly regress.
+Your agent failed once. Make CI remember — capture the bad run, promote golden assertions, replay them on every PR so the same failure class cannot quietly come back.
 
-This is **not** a security gate. It is a regression memory for agent sessions.
+This is **not** a security gate. It is regression memory for agent sessions.
 
-## Happy path (≤3 commands)
+## Five-minute path
 
-Real Claude Code session → golden pack → CI signal:
-
-```bash
-failpack capture --claude-latest --id my-failure
-failpack promote my-failure
-failpack replay my-failure
-```
-
-Zero-setup wow (bundled fixture, no Claude required):
+Understand FailPack in one sitting:
 
 ```bash
-pip install failpack && failpack demo
+# install (pick one)
+pip install git+https://github.com/JiangSkirk/failpack.git
+# or from a checkout:  pip install -e ".[dev]"
+# or with uv:          uv pip install -e ".[dev]"
+
+failpack demo                         # capture → promote → replay (+ intentional FAIL)
+# optional real session:
+#   failpack capture --claude-latest --id my-failure
+#   failpack promote my-failure
+#   failpack replay my-failure
+# when something FAILs:
+#   failpack explain my-failure       # what broke / which assert / what next
 ```
+
+That is the whole product loop: **install → demo → (optional) capture → promote → replay**.
 
 ## Install
 
@@ -42,7 +47,7 @@ pip install -e ".[dev]"
 Then confirm:
 
 ```bash
-failpack --version   # → failpack 0.8.0
+failpack --version   # → failpack 0.9.0
 failpack doctor
 ```
 
@@ -50,7 +55,7 @@ failpack doctor
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
-## What you get (v0.8)
+## What you get (v0.9)
 
 | Command | What it does |
 |---|---|
@@ -68,6 +73,7 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack re-promote <id>` | Refresh assertions from **current** artifacts after intentional fix |
 | `failpack lint [id]` | Validate pack layout + assertion schema (no replay) |
 | `failpack report [id]` | Markdown replay summary (stdout or `$GITHUB_STEP_SUMMARY`) |
+| `failpack explain [id]` | **Short FAIL story:** what broke / which assert / what next |
 | `failpack rename <old> <new>` | Rename pack id + update meta / assertions |
 | `failpack rm <id> [--force]` | Delete a pack (golden requires `--force`) |
 | `failpack export <id> [-o pack.tgz]` | Share a golden pack (assertions + expected + meta + artifacts) |
@@ -80,14 +86,19 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack completion bash\|zsh` | Print shell completion script for power users |
 | `failpack migrate` | Stamp `schema_version` (no-op message if already current) |
 
-On failure, replay prints **which check**, **expected vs actual**, and a **one-line hint**. When a **fingerprint** fails and a promote-time text snapshot exists, it also prints a **short unified diff** of expected vs actual artifact text (truncated; disable with `--no-diff`).
+On failure, replay prints **which check**, **expected vs actual**, a **one-line hint**, and a **STORY** block (what broke / which assertion / what to do next). Prefer `failpack explain <id>` when you only want the story. When a **fingerprint** fails and a promote-time text snapshot exists, it also prints a **short unified diff** of expected vs actual artifact text (truncated; disable with `--no-diff`).
 
-Shipped golden packs:
+## Pack templates (goldens)
 
-- **`demo-missing-import`** — agent forgot an import; tests fail with `NameError`
-- **`demo-wrong-test-cmd`** — agent ran pytest on a missing file (`exit_code=4`)
-- **`demo-permission-denied`** — agent wrote to `/etc/…` and hit `PermissionError` (`exit_code=13`)
-- **`demo-tool-denied`** — Bash network install denied by policy (`exit_code=126`; uses `tool_denied_contains` + `bash_output_contains`)
+What each shipped pack teaches — full table in [`docs/PACKS.md`](docs/PACKS.md):
+
+| Pack | Failure class |
+|---|---|
+| **`demo-missing-import`** | Agent forgot an import → `NameError` |
+| **`demo-wrong-test-cmd`** | Agent ran pytest on a missing file (`exit_code=4`) |
+| **`demo-permission-denied`** | Agent wrote to `/etc/…` → `PermissionError` (`exit_code=13`) |
+| **`demo-tool-denied`** | Bash network install denied by policy (`exit_code=126`; `tool_denied_contains` + `bash_output_contains`) |
+| **`demo-five-minute`** | Created by `failpack demo` — same class as missing-import; teaches the wow path |
 
 ## Quickstart
 
@@ -143,6 +154,7 @@ failpack capture --glob 'fixtures/*.jsonl' --id my-failure
 
 failpack promote my-failure
 failpack replay my-failure
+failpack explain my-failure         # when FAIL: short story
 failpack replay my-failure --json   # machine output
 
 # after intentional drift / fix — refresh golden assertions
@@ -165,6 +177,7 @@ failpack promote my-failure             # write assertions + mark golden
 failpack lint my-failure                # schema / layout validate (no replay)
 failpack report                         # markdown summary (CI-friendly)
 failpack report --github                # append to $GITHUB_STEP_SUMMARY
+failpack explain my-failure             # STORY only (what / assert / next)
 failpack rename my-failure nicer-id     # rename dir + meta.id + assertions pack_id
 failpack rm nicer-id                    # refuses if golden
 failpack rm nicer-id --force            # delete golden pack for real
@@ -199,16 +212,55 @@ chmod +x .git/hooks/pre-commit
 
 See comments in [`examples/pre-commit-hook.sh`](examples/pre-commit-hook.sh) for a `pre-commit` framework snippet.
 
-### CI (this repo or others)
+### CI (Action + step summary)
+
+Copy-paste into any repo that vendors packs under `.failpack/packs/`:
+
+```yaml
+name: FailPack regression replay
+on: [push, pull_request]
+jobs:
+  failpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
+        with:
+          # defaults (both on):
+          # run-lint: "true"        # failpack lint before replay
+          # step-summary: "true"    # failpack report --github → job summary
+          # run-doctor: "true"
+          # json: "false"
+```
+
+Or generate a starter workflow:
 
 ```bash
 failpack init --ci   # writes .github/workflows/failpack.yml
 ```
 
-Or use the composite action with one line:
+**What `run-lint` does (default `true`):** runs `failpack lint` before replay — layout + assertion schema validate, no replay. Lint errors fail the job early.
 
-```yaml
-- uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
+**What the step summary looks like** (`failpack report --github`, default `step-summary: true`):
+
+```markdown
+# FailPack replay
+
+| Pack | Result | Checks |
+| --- | --- | --- |
+| `demo-missing-import` | **PASS** | 5/5 |
+| `demo-tool-denied` | **FAIL** | 4/6 |
+
+## Failures
+
+### `demo-tool-denied`
+
+> STORY: Pack 'demo-tool-denied' failed 2 of 6 checks.
+>   What broke: …
+>   Assertion:  …
+>   Next:       …
+
+- **FAIL** `fingerprint:artifacts/error.txt`: …
 ```
 
 Full example: [`examples/other-repo-ci.yml`](examples/other-repo-ci.yml).  
@@ -288,7 +340,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`CHANGELOG.md`](CHANGELOG.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 
