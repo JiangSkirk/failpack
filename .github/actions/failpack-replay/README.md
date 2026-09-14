@@ -26,7 +26,7 @@ Install FailPack and replay every golden pack under `.failpack/packs/`
 Pin to a tag when you want a stable CLI:
 
 ```yaml
-- uses: JiangSkirk/failpack/.github/actions/failpack-replay@v0.9.0
+- uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.0.0
 ```
 
 ### Machine-readable replay
@@ -47,7 +47,7 @@ Full workflow example: [`examples/other-repo-ci.yml`](../../../examples/other-re
 | `python-version` | `"3.12"` | Python version for `actions/setup-python` |
 | `install-from` | `git+https://github.com/JiangSkirk/failpack.git` | `"."` for editable local install, or a pip URL |
 | `extra-pip-args` | `""` | Extra args passed to `pip install` |
-| `run-doctor` | `"true"` | Run `failpack doctor` before replay |
+| `run-doctor` | `"true"` | Run `failpack doctor --score` before replay (advisory; exits 0) |
 | `run-lint` | `"true"` | Run `failpack lint` before replay (layout + assertion schema; no replay) |
 | `json` | `"false"` | Emit `failpack replay --all --json` |
 | `step-summary` | `"true"` | Write `failpack report --github` to `$GITHUB_STEP_SUMMARY` |
@@ -88,7 +88,7 @@ locally for the short FAIL story.
 
 1. `actions/setup-python` at `python-version`
 2. `pip install` FailPack from `install-from`
-3. Optional `failpack doctor`
+3. Optional `failpack doctor --score` (advisory readiness checklist)
 4. Optional `failpack lint` (`run-lint`, default on)
 5. `failpack list` + `failpack replay --all` (or `--json`)
 6. Optional `failpack report --github` (`step-summary`, default on; always runs after replay)

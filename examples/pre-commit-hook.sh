@@ -15,14 +15,16 @@
 #         pass_filenames: false
 #         always_run: true
 #
-# Requires: failpack on PATH (pip install failpack / pip install -e .)
+# Requires: failpack on PATH
+#   pip install "git+https://github.com/JiangSkirk/failpack.git"
+#   # or: pip install -e .
 
 set -euo pipefail
 
 export NO_COLOR="${NO_COLOR:-1}"
 
 if ! command -v failpack >/dev/null 2>&1; then
-  echo "failpack: not on PATH — skip (install with: pip install failpack)" >&2
+  echo 'failpack: not on PATH — skip (install with: pip install "git+https://github.com/JiangSkirk/failpack.git")' >&2
   exit 0
 fi
 

@@ -58,7 +58,7 @@ def cmd_demo(
 
     Mirrors ``examples/five-minute-demo.sh`` so README can say::
 
-        pip install failpack && failpack demo
+        pip install "git+https://github.com/JiangSkirk/failpack.git" && failpack demo
     """
     project = find_root(root) if root is None else root.resolve()
     if not packs_dir(project).is_dir():

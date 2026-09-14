@@ -1,6 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
+[![version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** turns a coding-agent **failure session** into a **golden CI regression pack**.
 
@@ -10,52 +11,54 @@ This is **not** a security gate. It is regression memory for agent sessions.
 
 ## Five-minute path
 
-Understand FailPack in one sitting:
-
 ```bash
-# install (pick one)
-pip install git+https://github.com/JiangSkirk/failpack.git
-# or from a checkout:  pip install -e ".[dev]"
-# or with uv:          uv pip install -e ".[dev]"
-
-failpack demo                         # capture → promote → replay (+ intentional FAIL)
-# optional real session:
-#   failpack capture --claude-latest --id my-failure
-#   failpack promote my-failure
-#   failpack replay my-failure
-# when something FAILs:
-#   failpack explain my-failure       # what broke / which assert / what next
+pip install "git+https://github.com/JiangSkirk/failpack.git"
+failpack demo
 ```
 
-That is the whole product loop: **install → demo → (optional) capture → promote → replay**.
+That is the whole product loop: **install → demo**. Optional next steps after the wow:
+
+```bash
+failpack doctor --score              # 0–100 readiness + checklist
+failpack capture --claude-latest --id my-failure
+failpack promote my-failure
+failpack replay my-failure
+failpack explain my-failure          # when something FAILs
+```
 
 ## Install
 
-Requires Python **3.11+**.
+Requires Python **3.11+**. **No PyPI token / publish required** — install from GitHub:
 
 ```bash
-# from a local checkout
-pip install .
+# primary (works today, no PyPI)
+pip install "git+https://github.com/JiangSkirk/failpack.git"
 
-# or directly from GitHub
-pip install git+https://github.com/JiangSkirk/failpack.git
-
-# editable + tests
+# from a local checkout (editable + tests)
 pip install -e ".[dev]"
+
+# or with uv
+uv pip install -e ".[dev]"
 ```
 
-Then confirm:
+First command after install:
 
 ```bash
-failpack --version   # → failpack 0.9.0
-failpack doctor
+failpack demo
 ```
 
-`failpack doctor` checks Python, PyYAML, whether `~/.claude/projects` exists (and how many sessions), `.failpack/` layout, and pack counts — with tips like `capture --claude-latest` when sessions are found.
+Then confirm readiness:
+
+```bash
+failpack --version          # → failpack 1.0.0
+failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
+```
+
+`failpack doctor` checks Python, PyYAML, whether `~/.claude/projects` exists (and how many sessions), `.failpack/` layout, and pack counts — with tips like `capture --claude-latest` when sessions are found. `--score` adds a readiness score over **python**, **packs_dir**, **claude_projects**, **lint**, and **golden_count**. Doctor exits **0** by default; pass `--strict` to fail the process when checks FAIL.
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
-## What you get (v0.9)
+## What you get (v1.0)
 
 | Command | What it does |
 |---|---|
@@ -63,6 +66,7 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack init` | Create `.failpack/` layout (tip README → `demo` / `--claude-latest`) |
 | `failpack init --ci` | Also write a starter workflow that uses the composite action |
 | `failpack doctor` | Check env + Claude projects + workspace; print actionable fixes |
+| `failpack doctor --score` | **Readiness 0–100** + checklist (python / packs_dir / claude / lint / goldens) |
 | `failpack list` | Clean aligned table of packs (id, status, exit, promoted_at) |
 | `failpack show <id>` | **Pretty inspect** status, exit, asserts, artifacts (`--json`) |
 | `failpack status <id>` | Show meta + assertion summary for one pack |
@@ -105,10 +109,11 @@ What each shipped pack teaches — full table in [`docs/PACKS.md`](docs/PACKS.md
 ```bash
 # from this repo
 pip install -e ".[dev]"
-failpack doctor
-failpack demo                         # or: ./examples/five-minute-demo.sh
+failpack demo                         # first command after install
+failpack doctor --score
 failpack list
 failpack show demo-tool-denied        # pretty inspect (+ --json)
+failpack lint
 failpack replay --all                 # exits 0 when all golden packs pass
 failpack status demo-missing-import
 failpack migrate                      # already current → polite no-op
@@ -229,7 +234,7 @@ jobs:
           # defaults (both on):
           # run-lint: "true"        # failpack lint before replay
           # step-summary: "true"    # failpack report --github → job summary
-          # run-doctor: "true"
+          # run-doctor: "true"      # failpack doctor --score (advisory)
           # json: "false"
 ```
 
@@ -334,13 +339,14 @@ FailPack is intentionally narrow: **capture the failure you already saw**, promo
 pip install -e ".[dev]"
 pytest -q
 failpack --help
-failpack doctor
+failpack doctor --score
 failpack demo --skip-break
+failpack lint
 failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES_1.0.0.md`](RELEASE_NOTES_1.0.0.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 

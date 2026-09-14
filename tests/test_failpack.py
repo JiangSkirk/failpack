@@ -370,6 +370,100 @@ def test_doctor_ok_on_repo() -> None:
     assert "golden" in packs.detail
 
 
+def test_doctor_score_on_repo() -> None:
+    report = cmd_doctor(REPO, score=True)
+    assert report.score is not None
+    assert 0 <= report.score <= 100
+    # Repo has python + packs_dir + lint + goldens → at least 90
+    # (claude_projects may be 0 without ~/.claude)
+    assert report.score >= 90
+    names = [c.name for c in report.checklist]
+    assert names == [
+        "python",
+        "packs_dir",
+        "claude_projects",
+        "lint",
+        "golden_count",
+    ]
+    by_name = {c.name: c for c in report.checklist}
+    assert by_name["python"].ok and by_name["python"].points == 25
+    assert by_name["packs_dir"].ok and by_name["packs_dir"].points == 25
+    assert by_name["lint"].ok and by_name["lint"].points == 20
+    assert by_name["golden_count"].ok and by_name["golden_count"].points == 20
+    assert by_name["golden_count"].detail.startswith("4 golden")
+    text = "\n".join(report.summary_lines(with_score=True))
+    assert "READINESS SCORE:" in text
+    assert "checklist:" in text
+    assert f"{report.score}/100" in text
+
+
+def test_doctor_score_empty_workspace(workspace: Path, tmp_path: Path) -> None:
+    empty_home = tmp_path / "no-claude"
+    empty_home.mkdir()
+    report = cmd_doctor(workspace, home=empty_home, score=True)
+    assert report.score is not None
+    by_name = {c.name: c for c in report.checklist}
+    assert by_name["python"].points == 25
+    assert by_name["packs_dir"].points == 25
+    assert by_name["claude_projects"].points == 0
+    assert by_name["lint"].ok  # no packs → PASS with 0 checked
+    assert by_name["lint"].points == 20
+    assert by_name["golden_count"].points == 0
+    assert report.score == 70
+
+
+def test_doctor_score_missing_layout(tmp_path: Path) -> None:
+    empty_home = tmp_path / "home"
+    empty_home.mkdir()
+    root = tmp_path / "project"
+    root.mkdir()
+    report = cmd_doctor(root, home=empty_home, score=True)
+    assert not report.ok
+    assert report.score is not None
+    by_name = {c.name: c for c in report.checklist}
+    assert by_name["packs_dir"].points == 0
+    assert by_name["lint"].points == 0
+    assert by_name["golden_count"].points == 0
+    assert by_name["python"].points == 25
+    assert report.score == 25
+
+
+def test_cli_doctor_score_exit_zero(
+    workspace: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "doctor", "--score"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "READINESS SCORE:" in out
+    assert "checklist:" in out
+    assert "golden_count" in out
+
+
+def test_cli_doctor_strict_fails_without_layout(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tmp_path / "bare"
+    root.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(root), "doctor", "--strict"])
+    assert exc.value.code == 1
+    out = capsys.readouterr().out
+    assert "RESULT: FAIL" in out
+
+
+def test_cli_doctor_default_exit_zero_without_layout(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = tmp_path / "bare"
+    root.mkdir()
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(root), "doctor"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "RESULT: FAIL" in out
+
+
 def test_doctor_missing_layout(tmp_path: Path) -> None:
     report = cmd_doctor(tmp_path)
     assert not report.ok
@@ -446,8 +540,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_0_9_0() -> None:
-    assert __version__ == "0.9.0"
+def test_version_is_1_0_0() -> None:
+    assert __version__ == "1.0.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -857,6 +951,9 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.0.0" in changelog
+    assert "doctor --score" in changelog
+    assert "0.9.0" in changelog
     assert "0.7.0" in changelog
     assert "0.6.0" in changelog
     assert "0.5.0" in changelog
@@ -1012,7 +1109,9 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
-    assert "0.9.0" in text
+    assert "1.0.0" in text
+    assert "doctor --score" in text
+    assert 'git+https://github.com/JiangSkirk/failpack.git' in text
     assert "Five-minute path" in text
     assert "Pack lifecycle" in text
     assert "failpack report" in text
@@ -1027,6 +1126,10 @@ def test_readme_has_three_command_happy_path() -> None:
     assert (REPO / "docs" / "PACKS.md").is_file()
     packs = (REPO / "docs" / "PACKS.md").read_text(encoding="utf-8")
     assert "demo-missing-import" in packs
+    assert (REPO / "RELEASE_NOTES_1.0.0.md").is_file()
+    notes = (REPO / "RELEASE_NOTES_1.0.0.md").read_text(encoding="utf-8")
+    assert "1.0.0" in notes
+    assert "doctor --score" in notes
     assert "demo-tool-denied" in packs
     assert "demo-five-minute" in packs
 

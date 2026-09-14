@@ -5,6 +5,32 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-09-14
+
+### Added
+
+- **`failpack doctor --score`** — prints a **0–100 readiness score** plus checklist
+  (python, packs_dir, claude_projects, lint, golden_count).
+- **`failpack doctor --strict`** — exit non-zero when any doctor check FAILs.
+- **`RELEASE_NOTES_1.0.0.md`** — maintainer-pasteable GitHub Release draft.
+- Version badge on README.
+
+### Changed
+
+- Version bump to **1.0.0** (stranger-ready “1.0 feel”).
+- **Install story:** primary one-liner is
+  `pip install "git+https://github.com/JiangSkirk/failpack.git"` (no PyPI required);
+  **`failpack demo`** is the first command after install.
+- **`failpack doctor`** exits **0** by default (advisory); use `--strict` to gate.
+- Composite action runs `failpack doctor --score`.
+- Capture with no args prints a short tip list (`demo` / `--claude-latest` / path / stdin).
+- Help / examples / CONTRIBUTING / landing copy use the git install URL.
+
+### Notes
+
+- All prior 0.9 commands remain (`demo`, `explain`, `lint`, `report`, `replay --all`, …).
+- Zero coupling to Echo / Orin / titan-agent. No monetization / PyPI publish in this cut.
+
 ## [0.9.0] — 2026-09-14
 
 ### Added
