@@ -5,6 +5,35 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.5] — 2026-09-14
+
+### Added
+
+- **GitHub Pages workflow** [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
+  — deploys static `site/` via `upload-pages-artifact` + `deploy-pages` on
+  pushes to `main` that touch `site/` (or the workflow). Expected URL:
+  [https://jiangskirk.github.io/failpack/](https://jiangskirk.github.io/failpack/).
+  If Pages is not yet enabled: Settings → Pages → Source: **GitHub Actions**.
+- GitHub Release **`v1.5.5`** + [`RELEASE_NOTES_1.5.5.md`](RELEASE_NOTES_1.5.5.md).
+
+### Changed
+
+- [`site/index.html`](site/index.html) Quickstart leads with
+  `pip install "git+…"` + `failpack demo --fast` (aligned with README /
+  LANDING). Keeps Privacy/Terms, waitlist/email, draft tone (no fake social
+  proof, no live checkout links).
+- README links the Pages homepage; QUALITY_BAR marks the homepage nice-to-have
+  as workflow-shipped (honest enable step if still pending).
+- Version bump to **1.5.5**.
+- Docs / walkthrough / QUALITY_BAR version samples → **1.5.5**.
+
+### Notes
+
+- Quality-freeze thickening only. Action pin stays **`@v1.5.0`** (no Action
+  behavior change).
+- Zero coupling to Echo / Orin / titan-agent. No monetization / KYC / live
+  checkout. No PyPI upload without a token in env.
+
 ## [1.5.4] — 2026-09-14
 
 ### Fixed
