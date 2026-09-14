@@ -440,12 +440,17 @@ def test_doctor_score_missing_layout(tmp_path: Path) -> None:
     assert report.score is not None
     by_name = {c.name: c for c in report.checklist}
     assert by_name["packs_dir"].points == 0
+    assert by_name["packs_dir"].fix and "demo --fast" in by_name["packs_dir"].fix
     assert by_name["lint"].points == 0
     assert by_name["golden_count"].points == 0
     assert by_name["python"].points == 25
     assert by_name["claude_projects"].points == 0
     assert by_name["cursor_projects"].points == 0
     assert report.score == 25
+    text = "\n".join(report.summary_lines(with_score=True))
+    assert "RESULT: NEEDS SETUP" in text
+    assert "next:" in text
+    assert "failpack demo --fast" in text
 
 
 def test_cli_doctor_score_exit_zero(
@@ -469,7 +474,8 @@ def test_cli_doctor_strict_fails_without_layout(
         main(["--root", str(root), "doctor", "--strict"])
     assert exc.value.code == 1
     out = capsys.readouterr().out
-    assert "RESULT: FAIL" in out
+    assert "RESULT: NEEDS SETUP" in out
+    assert "failpack demo --fast" in out
 
 
 def test_cli_doctor_default_exit_zero_without_layout(
@@ -481,7 +487,9 @@ def test_cli_doctor_default_exit_zero_without_layout(
         main(["--root", str(root), "doctor"])
     assert exc.value.code == 0
     out = capsys.readouterr().out
-    assert "RESULT: FAIL" in out
+    assert "RESULT: NEEDS SETUP" in out
+    assert "next:" in out
+    assert "failpack demo --fast" in out
 
 
 def test_doctor_missing_layout(tmp_path: Path) -> None:
@@ -489,7 +497,11 @@ def test_doctor_missing_layout(tmp_path: Path) -> None:
     assert not report.ok
     layout = next(c for c in report.checks if c.name == "layout")
     assert not layout.ok
-    assert layout.fix and "failpack init" in layout.fix
+    assert layout.fix and "failpack demo --fast" in layout.fix
+    assert "failpack init" in (layout.fix or "")
+    text = "\n".join(report.summary_lines())
+    assert "RESULT: NEEDS SETUP" in text
+    assert "next:" in text
     # python + pyyaml should still pass
     assert next(c for c in report.checks if c.name == "python").ok
     assert next(c for c in report.checks if c.name == "pyyaml").ok
@@ -561,7 +573,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_3_0() -> None:
-    assert __version__ == "1.5.3"
+    assert __version__ == "1.5.4"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -1102,15 +1114,18 @@ def test_examples_docs_exist() -> None:
     assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "cursor-projects" in walk_body
     assert "~/.local/bin" in walk_body
+    assert "RELEASE_NOTES_1.5.4" in walk_body or "v1.5.4" in walk_body
     assert "RELEASE_NOTES_1.5.3" in walk_body or "v1.5.3" in walk_body
     assert "RELEASE_NOTES_1.5.2" in walk_body or "v1.5.2" in walk_body
     assert "RELEASE_NOTES_1.5.0" in walk_body or "v1.5.0" in walk_body
     assert "failpack diff" in walk_body or "list --json" in walk_body or "packs --json" in walk_body
     assert "Clean up with:" in walk_body
+    assert "failpack rm" in walk_body and "--force" in walk_body
+    assert "rm -rf" not in walk_body
     assert "SUPPORT.md" in walk_body
-    assert "1.5.3" in walk_body
+    assert "1.5.4" in walk_body
     contributing = (REPO / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert "1.5.3" in contributing
+    assert "1.5.4" in contributing
     assert "8725598a@gmail.com" in contributing
     assert "SUPPORT.md" in contributing
 
@@ -1119,10 +1134,13 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.5.4" in changelog
     assert "1.5.3" in changelog
     assert "1.5.2" in changelog
     assert "1.5.1" in changelog
     assert "1.5.0" in changelog
+    assert "failpack rm" in changelog
+    assert "NEEDS SETUP" in changelog
     assert "SUPPORT.md" in changelog
     assert "1.4.0" in changelog
     assert "1.3.0" in changelog
@@ -1256,6 +1274,9 @@ def test_demo_end_to_end(workspace: Path) -> None:
 
     report = cmd_demo(root=workspace, pack_id="demo-test", keep=True)
     assert report.ok, "\n".join(report.summary_lines())
+    text = "\n".join(report.summary_lines())
+    assert "failpack rm demo-test --force" in text
+    assert "rm -rf" not in text
     assert (workspace / ".failpack" / "packs" / "demo-test" / "assertions.yaml").is_file()
     assert cmd_replay("demo-test", root=workspace).ok
 
@@ -1271,6 +1292,9 @@ def test_demo_fast_compact_path(workspace: Path) -> None:
     assert "1/3" in text
     assert "2/8" not in text  # full doctor path skipped
     assert "RESULT: OK" in text
+    assert "Clean up with:" in text
+    assert "failpack rm demo-fast --force" in text
+    assert "rm -rf" not in text
     assert (workspace / ".failpack" / "packs" / "demo-fast" / "assertions.yaml").is_file()
 
 
@@ -1347,8 +1371,8 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
-    assert "1.5.3" in text
-    assert "1.5.2" in text or "1.5.1" in text or "1.5.0" in text
+    assert "1.5.4" in text
+    assert "1.5.3" in text or "1.5.2" in text or "1.5.1" in text or "1.5.0" in text
     assert "1.5.0" in text
     assert "1.4.0" in text
     assert "1.3.0" in text
@@ -1392,6 +1416,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "real-user" in quality.lower() or "real user" in quality.lower()
     assert "SUPPORT.md" in quality or "Support path" in quality
     assert "Done" in quality or "✅" in quality
+    assert "1.5.4" in quality
     assert "demo-five-minute" in quality or "leave" in quality.lower()
     publish = (REPO / "docs" / "PUBLISH.md").read_text(encoding="utf-8")
     assert "python -m build" in publish
@@ -1402,6 +1427,12 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "demo --fast" in packs
     landing = (REPO / "docs" / "LANDING.md").read_text(encoding="utf-8")
     assert "failpack demo --fast" in landing
+    assert (REPO / "RELEASE_NOTES_1.5.4.md").is_file()
+    notes154 = (REPO / "RELEASE_NOTES_1.5.4.md").read_text(encoding="utf-8")
+    assert "1.5.4" in notes154
+    assert "@v1.5.0" in notes154
+    assert "failpack rm" in notes154
+    assert "NEEDS SETUP" in notes154
     assert (REPO / "RELEASE_NOTES_1.5.3.md").is_file()
     notes153 = (REPO / "RELEASE_NOTES_1.5.3.md").read_text(encoding="utf-8")
     assert "1.5.3" in notes153

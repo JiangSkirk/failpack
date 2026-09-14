@@ -50,6 +50,11 @@ class DoctorReport:
     def ok(self) -> bool:
         return all(c.ok for c in self.checks) and bool(self.checks)
 
+    def _layout_only_miss(self) -> bool:
+        """True when the only hard miss is never-initialized layout."""
+        failed = [c for c in self.checks if not c.ok]
+        return bool(failed) and all(c.name == "layout" for c in failed)
+
     def summary_lines(self, *, with_score: bool = False) -> list[str]:
         lines = ["failpack doctor"]
         for c in self.checks:
@@ -72,7 +77,15 @@ class DoctorReport:
                 if c.fix and not c.ok:
                     lines.append(f"         fix: {c.fix}")
 
-        lines.append("RESULT: " + ("OK" if self.ok else "FAIL"))
+        if self.ok:
+            lines.append("RESULT: OK")
+        elif self._layout_only_miss():
+            # Never initialized — honest that layout is not OK, but lead with
+            # the next step instead of screaming FAIL at empty-project strangers.
+            lines.append("RESULT: NEEDS SETUP")
+            lines.append("next: failpack demo --fast   # or: failpack init")
+        else:
+            lines.append("RESULT: FAIL")
         return lines
 
 
@@ -205,7 +218,10 @@ def _check_layout(root: Path | None) -> list[DoctorCheck]:
                 "layout",
                 False,
                 f"no {FAILPACK_DIR}/ under {project}",
-                fix=f"Run `failpack init` in {project} (or pass --root). Or: failpack demo",
+                fix=(
+                    f"failpack demo --fast   # or: failpack init  "
+                    f"(creates {FAILPACK_DIR}/ under {project})"
+                ),
             )
         )
         return checks
@@ -217,7 +233,10 @@ def _check_layout(root: Path | None) -> list[DoctorCheck]:
                 "layout",
                 False,
                 f"{FAILPACK_DIR}/ found but missing {PACKS_DIR}/",
-                fix=f"Run `failpack init` to create {FAILPACK_DIR}/{PACKS_DIR}/.",
+                fix=(
+                    f"failpack demo --fast   # or: failpack init  "
+                    f"to create {FAILPACK_DIR}/{PACKS_DIR}/"
+                ),
             )
         )
         return checks
@@ -284,7 +303,10 @@ def _score_packs_dir(root: Path | None) -> DoctorCheck:
         "packs_dir",
         False,
         f"missing {FAILPACK_DIR}/{PACKS_DIR}/",
-        fix="Run `failpack init` (or `failpack demo`) to create the packs directory.",
+        fix=(
+            "failpack demo --fast   # or: failpack init  "
+            f"to create {FAILPACK_DIR}/{PACKS_DIR}/"
+        ),
         points=0,
         max_points=w,
     )
@@ -362,7 +384,7 @@ def _score_lint(root: Path | None) -> DoctorCheck:
             "lint",
             False,
             "skipped — no packs dir",
-            fix="Run `failpack init`, then `failpack lint`.",
+            fix="failpack demo --fast   # or: failpack init, then failpack lint",
             points=0,
             max_points=w,
         )
@@ -398,7 +420,7 @@ def _score_golden_count(root: Path | None) -> DoctorCheck:
             "golden_count",
             False,
             "0 golden (no packs dir)",
-            fix="failpack demo   # or: capture → promote a pack",
+            fix="failpack demo --fast   # or: capture → promote a pack",
             points=0,
             max_points=w,
         )
@@ -416,7 +438,7 @@ def _score_golden_count(root: Path | None) -> DoctorCheck:
         "golden_count",
         False,
         "0 golden packs",
-        fix="failpack demo   # or: failpack promote <id> after capture",
+        fix="failpack demo --fast   # or: failpack promote <id> after capture",
         points=0,
         max_points=w,
     )

@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.5.3-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.5.4-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** is regression memory for coding-agent failures.
 
@@ -59,7 +59,7 @@ failpack demo --fast     # ~60s wow (recommended)
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.5.3
+failpack --version          # → failpack 1.5.4
 failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
 ```
 
@@ -394,7 +394,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 

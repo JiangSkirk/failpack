@@ -119,7 +119,8 @@ def build_parser() -> argparse.ArgumentParser:
             "--score adds a 0–100 readiness score + checklist (python, packs_dir,\n"
             "claude_projects, cursor_projects, lint, golden_count).\n"
             "Agent paths are soft (missing Claude/Cursor does not break CI).\n"
-            "Exit 0 always unless --strict (then non-zero when RESULT: FAIL).\n"
+            "Exit 0 always unless --strict (then non-zero when checks are not OK;\n"
+            "empty projects may show RESULT: NEEDS SETUP instead of FAIL).\n"
         ),
     )
     p_doctor.add_argument(
