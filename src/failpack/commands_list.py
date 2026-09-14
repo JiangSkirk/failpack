@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,14 @@ class PackRow:
         promoted = self.promoted_at or "-"
         return (self.id, self.status, exit_s, promoted)
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "status": self.status,
+            "exit_code": self.exit_code,
+            "promoted_at": self.promoted_at,
+        }
+
 
 def format_table(rows: list[PackRow]) -> list[str]:
     """Progress-free aligned table for TTY / human output."""
@@ -47,6 +56,11 @@ def format_table(rows: list[PackRow]) -> list[str]:
     lines = [fmt(_HEADERS), fmt(tuple("-" * w for w in widths))]
     lines.extend(fmt(row) for row in cells)
     return lines
+
+
+def rows_to_json(rows: list[PackRow], *, indent: int = 2) -> str:
+    """Stable machine-readable pack index for tooling."""
+    return json.dumps([row.to_dict() for row in rows], indent=indent) + "\n"
 
 
 def list_packs(root: Path | None = None) -> list[PackRow]:

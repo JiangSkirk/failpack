@@ -549,7 +549,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_3_0() -> None:
-    assert __version__ == "1.3.0"
+    assert __version__ == "1.4.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -674,7 +674,7 @@ def test_cli_watch_prints_story_and_next_on_fail(
     assert "FAIL" in out
     assert "STORY:" in out
     assert "next: failpack explain watch-fail" in out
-    assert "promote --suggest watch-fail" in out
+    assert "failpack diff watch-fail" in out
     assert "re-promote watch-fail" in out
 
 
@@ -691,6 +691,60 @@ def test_cli_replay_no_diff_flag(workspace: Path, capsys: pytest.CaptureFixture[
     assert "diff:" not in out
 
 
+def test_diff_expected_vs_actual(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    from failpack.commands_diff import cmd_diff
+
+    _capture_and_promote(workspace, pack_id="diff-me")
+    ok = cmd_diff("diff-me", root=workspace)
+    assert ok.ok
+    assert ok.matched >= 1
+    assert all(f.status == "match" for f in ok.files)
+
+    err = workspace / ".failpack" / "packs" / "diff-me" / "artifacts" / "error.txt"
+    err.write_text(err.read_text(encoding="utf-8") + "\nDIFF-MUTATION\n", encoding="utf-8")
+    bad = cmd_diff("diff-me", root=workspace)
+    assert not bad.ok
+    assert bad.differed >= 1
+    summary = "\n".join(bad.summary_lines(color=False))
+    assert "RESULT: FAIL" in summary
+    assert "differ" in summary
+    assert "DIFF-MUTATION" in summary
+    assert "next: failpack explain diff-me" in summary
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "diff", "diff-me", "--json"])
+    assert exc.value.code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is False
+    assert payload["pack_id"] == "diff-me"
+    assert any(f["status"] == "differ" for f in payload["files"])
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "diff", "diff-me", "--no-diff"])
+    assert exc.value.code == 1
+    quiet = capsys.readouterr().out
+    assert "differ" in quiet
+    assert "DIFF-MUTATION" not in quiet
+
+
+def test_list_and_packs_json(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _capture_and_promote(workspace, pack_id="json-pack")
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "list", "--json"])
+    assert exc.value.code == 0
+    rows = json.loads(capsys.readouterr().out)
+    assert isinstance(rows, list)
+    assert any(r["id"] == "json-pack" and r["status"] == "golden" for r in rows)
+    assert "exit_code" in rows[0]
+    assert "promoted_at" in rows[0]
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "packs", "--json"])
+    assert exc.value.code == 0
+    alias = json.loads(capsys.readouterr().out)
+    assert alias == rows
+
+
 def test_init_ci_writes_workflow(tmp_path: Path) -> None:
     fp, workflow = cmd_init(tmp_path, ci=True)
     assert fp.is_dir()
@@ -699,12 +753,13 @@ def test_init_ci_writes_workflow(tmp_path: Path) -> None:
     text = workflow.read_text(encoding="utf-8")
     assert "failpack-replay" in text
     assert "JiangSkirk/failpack" in text
-    assert "@v1.2.0" in text
+    assert "@v1.3.0" in text
     tip = (fp / "README.md").read_text(encoding="utf-8")
     assert "failpack demo" in tip
     assert "--claude-latest" in tip
     assert "--cursor-latest" in tip
     assert "failpack show" in tip
+    assert "failpack diff" in tip
     assert "promote --suggest" in tip
     assert "STORY" in tip or "next:" in tip
     # Idempotent: second init --ci does not clobber
@@ -778,7 +833,7 @@ def test_replay_all_skips_non_golden_and_fails_on_broken(workspace: Path) -> Non
     assert f"failed packs: {DEMO_ID}" in summary
     assert "re-promote" in summary
     assert "failpack explain" in summary
-    assert "promote --suggest" in summary
+    assert "failpack diff" in summary
     assert f"next: failpack explain {DEMO_ID}" in summary
     assert "STORY:" in summary
 
@@ -808,14 +863,15 @@ def test_explain_fail_and_pass(workspace: Path) -> None:
     assert "Next:" in story
     assert "re-promote explain-me" in story
     assert "RESULT: FAIL" in story
-    assert "next: failpack promote --suggest explain-me" in story
+    assert "next: failpack diff explain-me" in story
+    assert "promote --suggest explain-me" in story
 
     # omit id → explain every failing golden
     all_fail = cmd_explain(root=workspace)
     assert not all_fail.ok
     all_text = "\n".join(all_fail.summary_lines())
     assert "explain-me" in all_text
-    assert "next: failpack promote --suggest" in all_text
+    assert "next: failpack diff" in all_text
 
 
 def test_cli_explain(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -1018,13 +1074,15 @@ def test_examples_docs_exist() -> None:
     assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "cursor-projects" in walk_body
     assert "~/.local/bin" in walk_body
-    assert "RELEASE_NOTES_1.2.0" in walk_body
+    assert "RELEASE_NOTES_1.3.0" in walk_body or "v1.3.0" in walk_body
+    assert "failpack diff" in walk_body or "list --json" in walk_body or "packs --json" in walk_body
 
 
 def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.4.0" in changelog
     assert "1.3.0" in changelog
     assert "1.2.0" in changelog
     assert "1.1.0" in changelog
@@ -1035,6 +1093,9 @@ def test_changelog_and_contributing_exist() -> None:
     assert "Daily loop" in changelog or "watch" in changelog.lower()
     assert "PUBLISH.md" in changelog
     assert "--fast" in changelog
+    assert "failpack diff" in changelog
+    assert "list --json" in changelog or "packs --json" in changelog
+    assert "@v1.3.0" in changelog
     assert "60s" in changelog or "~60" in changelog
     assert "one-shot" in changelog.lower() or "claude-latest" in changelog
     assert "--suggest" in changelog
@@ -1242,6 +1303,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
+    assert "1.4.0" in text
     assert "1.3.0" in text
     assert "1.2.0" in text
     assert "1.1.0" in text
@@ -1253,6 +1315,8 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "Pack lifecycle" in text
     assert "failpack report" in text
     assert "failpack lint" in text
+    assert "failpack diff" in text
+    assert "list --json" in text or "packs --json" in text
     assert "run-lint" in text
     assert "step-summary" in text
     assert "tool_denied_contains" in text
@@ -1263,7 +1327,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "Claude one-shot" in text or "one-shot" in text.lower()
     assert "STRANGER_WALKTHROUGH" in text
     assert "badge.svg" in text
-    assert "@v1.2.0" in text
+    assert "@v1.3.0" in text
     assert "Stet" in text
     assert "AgentClash" in text
     assert "stunning" not in text.lower()
@@ -1275,6 +1339,10 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "testpypi" in publish.lower() or "TestPyPI" in publish
     packs = (REPO / "docs" / "PACKS.md").read_text(encoding="utf-8")
     assert "demo-missing-import" in packs
+    assert (REPO / "RELEASE_NOTES_1.3.0.md").is_file()
+    notes13 = (REPO / "RELEASE_NOTES_1.3.0.md").read_text(encoding="utf-8")
+    assert "1.3.0" in notes13
+    assert "demo --fast" in notes13
     assert (REPO / "RELEASE_NOTES_1.2.0.md").is_file()
     notes12 = (REPO / "RELEASE_NOTES_1.2.0.md").read_text(encoding="utf-8")
     assert "1.2.0" in notes12
@@ -1289,10 +1357,10 @@ def test_readme_has_three_command_happy_path() -> None:
     action_readme = (REPO / ".github" / "actions" / "failpack-replay" / "README.md").read_text(
         encoding="utf-8"
     )
-    assert "@v1.2.0" in action_readme
+    assert "@v1.3.0" in action_readme
     assert "@main" in action_readme
     other_ci = (REPO / "examples" / "other-repo-ci.yml").read_text(encoding="utf-8")
-    assert "@v1.2.0" in other_ci
+    assert "@v1.3.0" in other_ci
 
 
 def test_rm_refuses_golden_without_force(workspace: Path) -> None:
@@ -1425,10 +1493,15 @@ def test_completion_bash_and_zsh_smoke() -> None:
     assert "promote" in bash
     assert "rename" in bash
     assert "explain" in bash
+    assert "diff" in bash
+    assert "--fast" in bash
+    assert "packs" in bash
     zsh = cmd_completion("zsh")
     assert "#compdef failpack" in zsh
     assert "_failpack" in zsh
     assert "explain" in zsh
+    assert "diff" in zsh
+    assert "--fast" in zsh
     with pytest.raises(ValueError, match="Unsupported shell"):
         cmd_completion("fish")
 
@@ -1447,7 +1520,7 @@ def test_cli_completion_and_lifecycle_help(capsys: pytest.CaptureFixture[str]) -
         names.update(action.choices.keys())
         if "promote" in action.choices:
             promote_help = action.choices["promote"].format_help()
-    assert {"rm", "rename", "completion", "explain"} <= names
+    assert {"rm", "rename", "completion", "explain", "diff", "packs"} <= names
     assert promote_help is not None
     assert "--dry-run" in promote_help
     assert "--suggest" in promote_help

@@ -5,6 +5,35 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-09-14
+
+### Added
+
+- **`failpack diff <id>`** — expected vs actual artifact summary **without** full
+  assertion replay (short unified diffs; `--json` / `--no-diff`).
+- **`failpack list --json`** / **`failpack packs --json`** — stable machine pack
+  index (`id`, `status`, `exit_code`, `promoted_at`) for tooling.
+- GitHub Release **`v1.3.0`** + [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md).
+- Action docs / examples / `init --ci` pin **`@v1.3.0`** (keep `@main` as
+  alternative).
+
+### Changed
+
+- Version bump to **1.4.0**.
+- Top-level help / install epilog lead with **`demo --fast`**.
+- FAIL **`next:`** tips point at **`diff`** (replay/watch: `explain` · `diff` ·
+  `re-promote`; explain: `diff` · `promote --suggest` · `re-promote`).
+- Shell completion includes **`diff`**, **`packs`**, **`list --json`**, and
+  **`demo --fast`**.
+
+### Notes
+
+- Stranger critique (clean venv install of `v1.3.0`): `demo --fast`,
+  `doctor --score`, forced FAIL → `explain` — fixed help defaults and added
+  `diff` so fingerprint drift does not require a second full replay.
+- Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
+  without a token in env.
+
 ## [1.3.0] — 2026-09-14
 
 ### Added

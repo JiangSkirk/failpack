@@ -13,10 +13,10 @@ repo checkout). Target: **about a minute** to first PASS after install.
 $ pip install "git+https://github.com/JiangSkirk/failpack.git"
 Collecting git+https://github.com/JiangSkirk/failpack.git
   …
-Successfully installed failpack-1.3.0 …
+Successfully installed failpack-1.4.0 …
 
 $ failpack --version
-failpack 1.3.0
+failpack 1.4.0
 ```
 
 Editable checkout (optional, for contributing):
@@ -26,7 +26,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.3.0
+failpack 1.4.0
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -39,7 +39,7 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --fast
-failpack demo --fast  (~60s wow)  ·  failpack 1.3.0
+failpack demo --fast  (~60s wow)  ·  failpack 1.4.0
 
 ==> 1/3  capture bundled fixture → 'demo-five-minute'
 Captured pack 'demo-five-minute' → …/.failpack/packs/demo-five-minute
@@ -87,7 +87,39 @@ Score hits **100/100** when both Claude Code (`~/.claude/projects`) and Cursor
 adds **+5**; neither is required — fixtures and `failpack demo --fast` are enough.
 CI without agent homes stays at **90/100** (does not break).
 
-## 4) Claude Code one-shot (when you have a real failure)
+## 4) Forced FAIL → explain → diff
+
+When a fingerprint drifts, strangers should not have to re-read a full replay
+dump just to see the text:
+
+```bash
+$ echo MUTATED >> .failpack/packs/demo-five-minute/artifacts/error.txt
+$ failpack explain demo-five-minute
+failpack explain: demo-five-minute
+STORY: …
+RESULT: FAIL
+next: failpack diff demo-five-minute  ·  failpack promote --suggest demo-five-minute  ·  failpack re-promote demo-five-minute
+
+$ failpack diff demo-five-minute
+failpack diff: demo-five-minute
+  [FAIL] artifacts/error.txt: differ
+         diff:
+           --- expected/artifacts/error.txt
+           +++ artifacts/error.txt
+           …
+RESULT: FAIL
+
+$ failpack list --json   # or: failpack packs --json
+[
+  {
+    "id": "demo-five-minute",
+    "status": "golden",
+    …
+  }
+]
+```
+
+## 5) Claude Code one-shot (when you have a real failure)
 
 After Claude Code fails a task once:
 
@@ -109,7 +141,7 @@ Doctor tips the same one-shot when sessions are present:
          tip: One-shot: failpack capture --claude-latest --id my-failure  (newest: 0192ef01-….jsonl)
 ```
 
-## 5) Optional next steps
+## 6) Optional next steps
 
 Use the pack the demo just created (`demo-five-minute`), not repo goldens like
 `demo-tool-denied` (those only exist in a FailPack checkout).
@@ -131,5 +163,5 @@ failpack lint
 - [`five-minute-demo.sh`](five-minute-demo.sh) — delegates to `failpack demo`
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
-- [`../RELEASE_NOTES_1.2.0.md`](../RELEASE_NOTES_1.2.0.md) — tagged GitHub Release `v1.2.0`
+- [`../RELEASE_NOTES_1.3.0.md`](../RELEASE_NOTES_1.3.0.md) — tagged GitHub Release `v1.3.0`
 - [`../CHANGELOG.md`](../CHANGELOG.md)
