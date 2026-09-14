@@ -119,14 +119,16 @@ def build_parser() -> argparse.ArgumentParser:
             "examples:\n"
             "  failpack doctor\n"
             "  failpack doctor --score\n"
-            "  failpack doctor --score --strict\n"
+            "  failpack doctor --score --root /path/to/project\n"
             "\n"
             "Checks Python, PyYAML, ~/.claude/projects, .failpack/ layout, packs.\n"
             "--score adds a 0–100 readiness score + checklist (python, packs_dir,\n"
             "claude_projects, cursor_projects, lint, golden_count).\n"
             "Agent paths are soft (missing Claude/Cursor does not break CI).\n"
-            "Exit 0 always unless --strict (then non-zero when checks are not OK;\n"
-            "empty projects may show RESULT: NEEDS SETUP instead of FAIL).\n"
+            "Doctor scores cwd (or --root) only — does not inherit ancestor\n"
+            ".failpack/ dirs. Empty dirs → RESULT: NEEDS SETUP (exit 1).\n"
+            "Exit 0 on RESULT: OK; exit 1 on NEEDS SETUP or FAIL.\n"
+            "--strict is kept for compatibility (same exit rules).\n"
         ),
     )
     p_doctor.add_argument(
@@ -137,7 +139,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_doctor.add_argument(
         "--strict",
         action="store_true",
-        help="Exit non-zero when any doctor check FAILs (default: always exit 0)",
+        help=(
+            "Exit non-zero when checks are not OK "
+            "(default since 1.5.10: NEEDS SETUP / FAIL already exit 1)"
+        ),
     )
     p_doctor.set_defaults(func=_handle_doctor)
 
@@ -768,8 +773,8 @@ def _handle_init(args: argparse.Namespace) -> int:
 def _handle_doctor(args: argparse.Namespace) -> int:
     report = cmd_doctor(args.root, score=args.score)
     print("\n".join(report.summary_lines(with_score=args.score)))
-    # Stranger-friendly: doctor is advisory by default (exit 0).
-    if args.strict and not report.ok:
+    # Machineable: OK → 0; NEEDS SETUP / FAIL → 1 (--strict is a no-op alias).
+    if not report.ok:
         return 1
     return 0
 

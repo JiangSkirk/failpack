@@ -55,7 +55,7 @@ does not invent paths.
 pip install failpack
 # or: pip install "git+https://github.com/JiangSkirk/failpack.git"
 # or from a checkout: pip install -e ".[dev]"
-failpack --version    # failpack 1.5.9+
+failpack --version    # failpack 1.5.10+
 failpack doctor --score
 failpack init         # if this repo isn't already initialized
 ```

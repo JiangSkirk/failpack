@@ -222,7 +222,7 @@ _failpack() {{
         doctor)
           _arguments \\
             '--score[print 0-100 readiness score]' \\
-            '--strict[exit non-zero on FAIL]'
+            '--strict[exit non-zero on NEEDS SETUP/FAIL (default since 1.5.10)]'
           ;;
         demo)
           _arguments \\

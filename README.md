@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.5.9-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.5.10-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** is regression memory for coding-agent failures.
 
@@ -70,8 +70,8 @@ failpack demo --cursor-hermetic   # prove --cursor-latest without Cursor
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.5.9
-failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
+failpack --version          # → failpack 1.5.10
+failpack doctor --score     # 0–100 + checklist (exit 0 OK / exit 1 NEEDS SETUP|FAIL)
 ```
 
 Stranger copy-paste session: [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md).
@@ -82,7 +82,7 @@ Bugs and friction: open a **[GitHub Issue](https://github.com/JiangSkirk/failpac
 Private contact: email `8725598a@gmail.com` (owner **JiangSkirk**). Details:
 [`docs/SUPPORT.md`](docs/SUPPORT.md).
 
-`failpack doctor` checks Python, PyYAML, soft Claude / Cursor project paths, `.failpack/` layout, and pack counts — with tips like `capture --claude-latest` / `--cursor-latest` when sessions are found. `--score` adds a readiness score over **python**, **packs_dir**, **claude_projects**, **cursor_projects**, **lint**, and **golden_count**. Agent paths are soft (+5 each); missing both still yields **90/100** in CI. Doctor exits **0** by default; pass `--strict` to fail the process when checks FAIL.
+`failpack doctor` checks Python, PyYAML, soft Claude / Cursor project paths, `.failpack/` layout, and pack counts — with tips like `capture --claude-latest` / `--cursor-latest` when sessions are found. `--score` adds a readiness score over **python**, **packs_dir**, **claude_projects**, **cursor_projects**, **lint**, and **golden_count**. Agent paths are soft (+5 each); missing both still yields **90/100** in CI. Doctor scores **cwd** (or `--root`) only — it does **not** inherit ancestor `.failpack/` dirs. Exit **0** on RESULT: OK; exit **1** on NEEDS SETUP or FAIL (`--strict` kept for compatibility).
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
@@ -415,7 +415,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.9.md`](RELEASE_NOTES_1.5.9.md) / [`RELEASE_NOTES_1.5.8.md`](RELEASE_NOTES_1.5.8.md) / [`RELEASE_NOTES_1.5.7.md`](RELEASE_NOTES_1.5.7.md) / [`RELEASE_NOTES_1.5.6.md`](RELEASE_NOTES_1.5.6.md) / [`RELEASE_NOTES_1.5.5.md`](RELEASE_NOTES_1.5.5.md) / [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.10.md`](RELEASE_NOTES_1.5.10.md) / [`RELEASE_NOTES_1.5.9.md`](RELEASE_NOTES_1.5.9.md) / [`RELEASE_NOTES_1.5.8.md`](RELEASE_NOTES_1.5.8.md) / [`RELEASE_NOTES_1.5.7.md`](RELEASE_NOTES_1.5.7.md) / [`RELEASE_NOTES_1.5.6.md`](RELEASE_NOTES_1.5.6.md) / [`RELEASE_NOTES_1.5.5.md`](RELEASE_NOTES_1.5.5.md) / [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 

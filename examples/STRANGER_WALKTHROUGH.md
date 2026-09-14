@@ -13,10 +13,10 @@ repo checkout). Target: **about a minute** to first PASS after install.
 $ pip install failpack
 Collecting failpack
   …
-Successfully installed failpack-1.5.9 …
+Successfully installed failpack-1.5.10 …
 
 $ failpack --version
-failpack 1.5.9
+failpack 1.5.10
 ```
 
 Git fallback (optional):
@@ -32,7 +32,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.5.9
+failpack 1.5.10
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -45,7 +45,7 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --fast
-failpack demo --fast  (~60s wow)  ·  failpack 1.5.9
+failpack demo --fast  (~60s wow)  ·  failpack 1.5.10
 
 ==> 1/3  capture bundled fixture → 'demo-five-minute'
 Captured pack 'demo-five-minute' → …/.failpack/packs/demo-five-minute
@@ -140,7 +140,7 @@ laptop, fake HOME only (bundled fixture ships in the wheel):
 
 ```bash
 $ failpack demo --claude-hermetic
-failpack demo --claude-hermetic  ·  failpack 1.5.9
+failpack demo --claude-hermetic  ·  failpack 1.5.10
 
 ==> 1/4  seed fake HOME + capture --claude-latest → 'claude-hermetic'
     layout: ~/.claude/projects/<name>/*.jsonl
@@ -215,7 +215,7 @@ After `pip install failpack` — no clone required:
 
 ```bash
 $ failpack demo --cursor-hermetic
-failpack demo --cursor-hermetic  ·  failpack 1.5.9
+failpack demo --cursor-hermetic  ·  failpack 1.5.10
 
 ==> 1/4  seed fake HOME + capture --cursor-latest → 'cursor-hermetic'
     layout: ~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl
@@ -274,7 +274,8 @@ failpack lint
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
 - [`../docs/SUPPORT.md`](../docs/SUPPORT.md) — GitHub Issues + email
-- [`../RELEASE_NOTES_1.5.9.md`](../RELEASE_NOTES_1.5.9.md) — tagged GitHub Release `v1.5.9`
+- [`../RELEASE_NOTES_1.5.10.md`](../RELEASE_NOTES_1.5.10.md) — tagged GitHub Release `v1.5.10`
+- [`../RELEASE_NOTES_1.5.9.md`](../RELEASE_NOTES_1.5.9.md) — prior Release `v1.5.9`
 - [`../RELEASE_NOTES_1.5.8.md`](../RELEASE_NOTES_1.5.8.md) — prior Release `v1.5.8`
 - [`../RELEASE_NOTES_1.5.7.md`](../RELEASE_NOTES_1.5.7.md) — prior Release `v1.5.7`
 - [`../RELEASE_NOTES_1.5.6.md`](../RELEASE_NOTES_1.5.6.md) — prior Release `v1.5.6`
