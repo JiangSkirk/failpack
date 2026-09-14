@@ -66,6 +66,8 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack promote <id>` | Mark golden + write `assertions.yaml` (+ expected text snapshots) |
 | `failpack promote --dry-run <id>` | Preview assertions YAML **without** writing |
 | `failpack re-promote <id>` | Refresh assertions from **current** artifacts after intentional fix |
+| `failpack lint [id]` | Validate pack layout + assertion schema (no replay) |
+| `failpack report [id]` | Markdown replay summary (stdout or `$GITHUB_STEP_SUMMARY`) |
 | `failpack rename <old> <new>` | Rename pack id + update meta / assertions |
 | `failpack rm <id> [--force]` | Delete a pack (golden requires `--force`) |
 | `failpack export <id> [-o pack.tgz]` | Share a golden pack (assertions + expected + meta + artifacts) |
@@ -160,6 +162,9 @@ Manage packs after capture without hand-editing `.failpack/packs/`:
 ```bash
 failpack promote --dry-run my-failure   # preview assertions.yaml (no write)
 failpack promote my-failure             # write assertions + mark golden
+failpack lint my-failure                # schema / layout validate (no replay)
+failpack report                         # markdown summary (CI-friendly)
+failpack report --github                # append to $GITHUB_STEP_SUMMARY
 failpack rename my-failure nicer-id     # rename dir + meta.id + assertions pack_id
 failpack rm nicer-id                    # refuses if golden
 failpack rm nicer-id --force            # delete golden pack for real
@@ -170,7 +175,8 @@ eval "$(failpack completion bash)"      # or: failpack completion zsh
 
 On promote / replay load, FailPack **validates** assertion kinds and required fields.
 Unknown kinds (e.g. a typo’d top-level key) or missing `path` / `sha256` / `contains`
-raise a clear error instead of being silently ignored.
+raise a clear error instead of being silently ignored. `failpack lint` surfaces the
+same checks as a dedicated command.
 
 ### Cursor-ish transcripts (manual)
 

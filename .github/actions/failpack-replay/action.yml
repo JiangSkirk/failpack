@@ -31,6 +31,14 @@ inputs:
     description: Emit machine-readable JSON from replay
     required: false
     default: "false"
+  step-summary:
+    description: Write markdown replay report to $GITHUB_STEP_SUMMARY
+    required: false
+    default: "true"
+  run-lint:
+    description: Run failpack lint before replay
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -57,6 +65,14 @@ runs:
       working-directory: ${{ inputs.root }}
       run: failpack doctor
 
+    - name: Lint packs
+      if: inputs.run-lint == 'true'
+      shell: bash
+      working-directory: ${{ inputs.root }}
+      env:
+        NO_COLOR: "1"
+      run: failpack lint
+
     - name: Replay golden packs
       shell: bash
       working-directory: ${{ inputs.root }}
@@ -70,3 +86,13 @@ runs:
         else
           failpack replay --all
         fi
+
+    - name: Step summary
+      if: always() && inputs.step-summary == 'true'
+      shell: bash
+      working-directory: ${{ inputs.root }}
+      env:
+        NO_COLOR: "1"
+      # continue-on-error: report exits 1 on FAIL; replay step already owns the signal
+      continue-on-error: true
+      run: failpack report --github

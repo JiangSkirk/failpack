@@ -48,6 +48,8 @@ Packs live under `packs/<id>/`.
 - `failpack capture --claude-latest` — newest session under `~/.claude/projects`
 - `failpack promote <id>` — mark golden and write assertions
 - `failpack promote --dry-run <id>` — preview assertions without writing
+- `failpack lint` — validate pack layout + assertion schema
+- `failpack report` — markdown replay summary (CI step summary)
 - `failpack rename <old> <new>` — rename pack id + update meta
 - `failpack rm <id> [--force]` — delete a pack (golden needs --force)
 - `failpack export <id>` / `failpack import <pack.tgz>` — share packs

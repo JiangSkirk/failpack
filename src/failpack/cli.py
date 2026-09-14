@@ -14,11 +14,13 @@ from failpack.commands_doctor import cmd_doctor
 from failpack.commands_export import cmd_export
 from failpack.commands_import import cmd_import
 from failpack.commands_init import cmd_init
+from failpack.commands_lint import cmd_lint
 from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
 from failpack.commands_promote import cmd_promote, cmd_re_promote, format_assertions_preview
 from failpack.commands_rename import cmd_rename
 from failpack.commands_replay import cmd_replay, cmd_replay_all
+from failpack.commands_report import cmd_report
 from failpack.commands_rm import cmd_rm
 from failpack.commands_show import cmd_show
 from failpack.commands_status import cmd_status
@@ -45,6 +47,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack replay --all\n"
             "  failpack list\n"
             "  failpack show demo-missing-import\n"
+            "  failpack report --github\n"
+            "  failpack lint\n"
             "  failpack promote --dry-run my-failure\n"
             "  failpack rename old-id new-id\n"
             "  failpack rm my-failure --force\n"
@@ -409,6 +413,67 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_rep.set_defaults(func=_handle_replay)
 
+    p_report = sub.add_parser(
+        "report",
+        help="Markdown replay summary (GitHub Actions step summary)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack report                 # all golden packs → markdown on stdout\n"
+            "  failpack report demo-missing-import\n"
+            "  failpack report --github        # append to $GITHUB_STEP_SUMMARY\n"
+            "  failpack report -o report.md\n"
+            "\n"
+            "Exit 0 on PASS, non-zero on FAIL (same signal as replay).\n"
+        ),
+    )
+    p_report.add_argument(
+        "pack_id",
+        nargs="?",
+        default=None,
+        help="Pack id (default: all golden packs)",
+    )
+    p_report.add_argument(
+        "--github",
+        action="store_true",
+        help="Append markdown to $GITHUB_STEP_SUMMARY (GitHub Actions)",
+    )
+    p_report.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Write markdown to a file instead of stdout",
+    )
+    p_report.add_argument(
+        "--no-diff",
+        action="store_true",
+        help="Omit fingerprint diffs in the markdown report",
+    )
+    p_report.set_defaults(func=_handle_report)
+
+    p_lint = sub.add_parser(
+        "lint",
+        help="Validate pack layout + assertion schema (no replay)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack lint\n"
+            "  failpack lint demo-missing-import\n"
+            "\n"
+            "Checks meta/assertions schema, id consistency, and golden layout.\n"
+            "Exit 0 when no errors (warnings allowed).\n"
+        ),
+    )
+    p_lint.add_argument(
+        "pack_id",
+        nargs="?",
+        default=None,
+        help="Pack id (default: every pack under .failpack/packs/)",
+    )
+    p_lint.set_defaults(func=_handle_lint)
+
     p_mig = sub.add_parser(
         "migrate",
         help="Stamp pack schema_version (no-op if already current)",
@@ -621,6 +686,31 @@ def _handle_replay(args: argparse.Namespace) -> int:
         sys.stdout.write(report.to_json())
     else:
         print("\n".join(report.summary_lines()))
+    return 0 if report.ok else 1
+
+
+def _handle_report(args: argparse.Namespace) -> int:
+    if args.github and args.output is not None:
+        raise ValueError("Use either --github or -o/--output, not both.")
+    result = cmd_report(
+        args.pack_id,
+        root=args.root,
+        github=args.github,
+        output=args.output,
+        show_diff=not args.no_diff,
+    )
+    if args.github or args.output is not None:
+        print("\n".join(result.summary_lines()))
+    else:
+        sys.stdout.write(result.markdown)
+        if not result.markdown.endswith("\n"):
+            sys.stdout.write("\n")
+    return 0 if result.ok else 1
+
+
+def _handle_lint(args: argparse.Namespace) -> int:
+    report = cmd_lint(args.pack_id, root=args.root)
+    print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1
 
 

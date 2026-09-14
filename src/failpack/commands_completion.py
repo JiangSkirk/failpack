@@ -9,7 +9,7 @@ ShellName = Literal["bash", "zsh"]
 # Keep in sync with cli.build_parser subcommands (plus nested license check).
 _COMMANDS = (
     "init doctor demo export import list status show capture promote "
-    "re-promote watch replay migrate rm rename completion license"
+    "re-promote watch replay report lint migrate rm rename completion license"
 ).split()
 
 
@@ -45,16 +45,18 @@ _failpack() {{
       COMPREPLY=( $(compgen -W "check" -- "${{cur}}") )
       return 0
       ;;
-    promote|re-promote|status|show|export|rm|rename|replay)
+    promote|re-promote|status|show|export|rm|rename|replay|report|lint)
       # Pack ids from failpack list (first column)
       local packs
       packs="$(failpack list 2>/dev/null | awk 'NR>2 {{print $1}}')"
-      if [[ "${{cmd}}" == "promote" ]]; then
+      if [[ "${{cmd}}" == "promote" || "${{cmd}}" == "re-promote" ]]; then
         COMPREPLY=( $(compgen -W "--dry-run ${{packs}}" -- "${{cur}}") )
       elif [[ "${{cmd}}" == "rm" ]]; then
         COMPREPLY=( $(compgen -W "--force ${{packs}}" -- "${{cur}}") )
       elif [[ "${{cmd}}" == "replay" ]]; then
         COMPREPLY=( $(compgen -W "--all --json --no-diff ${{packs}}" -- "${{cur}}") )
+      elif [[ "${{cmd}}" == "report" ]]; then
+        COMPREPLY=( $(compgen -W "--github -o --output --no-diff ${{packs}}" -- "${{cur}}") )
       elif [[ "${{cmd}}" == "show" ]]; then
         COMPREPLY=( $(compgen -W "--json ${{packs}}" -- "${{cur}}") )
       elif [[ "${{cmd}}" == "export" ]]; then
@@ -153,6 +155,17 @@ _failpack() {{
             '--json[JSON output]' \\
             '--no-diff[disable fingerprint diffs]' \\
             '1:pack id:_pack_ids'
+          ;;
+        report)
+          _arguments \\
+            '--github[write to GITHUB_STEP_SUMMARY]' \\
+            '-o[output path]:path:_files' \\
+            '--output[output path]:path:_files' \\
+            '--no-diff[omit fingerprint diffs]' \\
+            '1:pack id:_pack_ids'
+          ;;
+        lint)
+          _arguments '1:pack id:_pack_ids'
           ;;
         capture|watch)
           _arguments \\

@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Assertion schema validate** on promote / replay load (`read_assertions` /
   `write_assertions`): clear `ValueError` for unknown assertion kinds or missing
   required fields (no silent ignore).
+- **`failpack lint [id]`** — light pack validate (layout + assertion schema;
+  exit non-zero on errors).
+- **`failpack report [id]`** — markdown replay summary for CI; `--github`
+  appends to `$GITHUB_STEP_SUMMARY`. Composite action writes a step summary
+  and runs `lint` by default.
 - **`failpack completion bash|zsh`** — print an installable shell completion
   script (argparse-style; pack ids from `failpack list`).
 - README **Pack lifecycle** section.
@@ -27,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Version bump to **0.8.0**.
 - `examples/five-minute-demo.sh` expects **0.8.x**.
+- Composite action: optional `run-lint` / `step-summary` inputs (both default on).
 
 ### Notes
 
