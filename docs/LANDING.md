@@ -75,6 +75,7 @@ Checkout via merchant of record (**Creem** or **Paddle**). We pick the MoR that 
 ```bash
 pip install failpack
 failpack demo --fast
+failpack demo --claude-hermetic
 
 # optional git fallback
 # pip install "git+https://github.com/JiangSkirk/failpack.git"

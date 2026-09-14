@@ -5,21 +5,26 @@ and turn it into a FailPack golden pack — no manual path hunting.
 
 ## Prove it without a live Claude install (first-class)
 
-Strangers and CI should **not** invent fake “user” packs. Use a **fake HOME**
-plus the shipped fixture — same discovery path as a real laptop:
+Strangers and CI should **not** invent fake “user” packs. After
+`pip install failpack`, prove `capture --claude-latest` with a **fake HOME**
+plus the **bundled** fixture — no clone required:
 
 ```bash
-# from a FailPack checkout
-pip install -e ".[dev]"
+pip install failpack
+failpack demo --claude-hermetic
+# optional: failpack demo --claude-hermetic --fast
+```
+
+Checkout alias (thin wrapper):
+
+```bash
 ./examples/claude-latest-hermetic.sh
 ```
 
-That script sets `HOME` to a temp dir, copies
-`fixtures/claude-code-failure.jsonl` under
-`~/.claude/projects/<name>/*.jsonl` (here
-`projects/hermetic-demo/session.jsonl`), then runs
-**capture --claude-latest → promote → replay**. Or do it by hand
-(layout is always `~/.claude/projects/<name>/*.jsonl` — accept used
+That path seeds `~/.claude/projects/<name>/*.jsonl` (here
+`projects/hermetic-demo/session.jsonl`) from the shipped fixture, then runs
+**capture --claude-latest → promote --suggest --write → lint → replay**. Or do
+it by hand (layout is always `~/.claude/projects/<name>/*.jsonl` — accept used
 `projects/demo/session.jsonl`):
 
 ```bash
@@ -33,8 +38,9 @@ failpack replay from-fake-home
 
 Re-capture the same id? Pass `--force` or pick a new `--id` — the error tip says both.
 
-Doctor tips the same path when no sessions exist (`demo --fast` / hermetic
-script first). FailPack never requires a live agent install in the repo.
+Doctor tips the same path when no sessions exist (`demo --fast` /
+`demo --claude-hermetic` first). FailPack never requires a live agent install
+in the repo.
 
 ## Real-machine one-shot (~a minute after a real failure)
 
@@ -57,15 +63,15 @@ No Claude sessions yet? Doctor and the error message both tip:
 
 ```bash
 failpack demo --fast                    # ~60s wow without an agent
-./examples/claude-latest-hermetic.sh    # prove --claude-latest hermetically
+failpack demo --claude-hermetic         # prove --claude-latest hermetically
 # or finish a Claude Code run, then retry --claude-latest
 ```
 
 ## Prerequisites
 
 ```bash
-pip install -e ".[dev]"
-failpack --version    # failpack 1.5.7+
+pip install failpack   # or: pip install -e ".[dev]"
+failpack --version    # failpack 1.5.8+
 failpack doctor       # tips hermetic path when no sessions; --claude-latest when sessions exist
 failpack init         # if this repo isn't already initialized
 ```
@@ -181,7 +187,7 @@ No Cursor API coupling — same JSONL → pack path as Claude fixtures.
 
 ## See also
 
-- [`claude-latest-hermetic.sh`](claude-latest-hermetic.sh) — one command for the fake-HOME proof
+- [`claude-latest-hermetic.sh`](claude-latest-hermetic.sh) — thin alias for `failpack demo --claude-hermetic`
 - [`STRANGER_WALKTHROUGH.md`](STRANGER_WALKTHROUGH.md)
 - [`five-minute-demo.sh`](five-minute-demo.sh)
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md)

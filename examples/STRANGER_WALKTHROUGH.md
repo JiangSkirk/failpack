@@ -1,8 +1,8 @@
 # Stranger walkthrough — FailPack from zero (~60s)
 
 Copy-paste terminal session a new user would see: `pip install failpack` →
-`failpack demo --fast` → optional Claude one-shot. No Echo / Orin /
-titan-agent. Git install is fallback only.
+`failpack demo --fast` → `failpack demo --claude-hermetic` → optional real
+Claude one-shot. No Echo / Orin / titan-agent. Git install is fallback only.
 
 Assumes Python **3.11+** and a clean shell (empty project dir — not the FailPack
 repo checkout). Target: **about a minute** to first PASS after install.
@@ -13,10 +13,10 @@ repo checkout). Target: **about a minute** to first PASS after install.
 $ pip install failpack
 Collecting failpack
   …
-Successfully installed failpack-1.5.7 …
+Successfully installed failpack-1.5.8 …
 
 $ failpack --version
-failpack 1.5.7
+failpack 1.5.8
 ```
 
 Git fallback (optional):
@@ -32,7 +32,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.5.7
+failpack 1.5.8
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -45,7 +45,7 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --fast
-failpack demo --fast  (~60s wow)  ·  failpack 1.5.7
+failpack demo --fast  (~60s wow)  ·  failpack 1.5.8
 
 ==> 1/3  capture bundled fixture → 'demo-five-minute'
 Captured pack 'demo-five-minute' → …/.failpack/packs/demo-five-minute
@@ -58,7 +58,7 @@ RESULT: PASS
 
 Done (~60s). Demo pack left at …/.failpack/packs/demo-five-minute (status=golden).
 Clean up with:  failpack rm demo-five-minute --force
-Next: failpack capture --claude-latest --id my-failure  ·  failpack demo   # full path with break/restore
+Next: failpack demo --claude-hermetic  (prove capture --claude-latest without Claude)  ·  failpack capture --claude-latest --id my-failure  ·  failpack demo   # full path with break/restore
 RESULT: OK
 ```
 
@@ -73,7 +73,7 @@ failpack doctor
   [OK] python: …
   [OK] pyyaml: …
   [OK] claude-projects: not found (…) — optional
-         tip: No sessions yet — try: failpack demo --fast  ·  or prove Claude one-shot: ./examples/claude-latest-hermetic.sh (fake HOME + fixtures/claude-code-failure.jsonl)  ·  or after a Claude Code run: failpack capture --claude-latest --id my-failure
+         tip: No sessions yet — try: failpack demo --fast  ·  or prove Claude one-shot: failpack demo --claude-hermetic (fake HOME + bundled fixture)  ·  or after a Claude Code run: failpack capture --claude-latest --id my-failure
   [OK] cursor-projects: not found (…) — optional
   [OK] layout: .failpack/ + packs/ at …
   [OK] packs: 1 pack(s) (1 golden, 0 captured)
@@ -134,19 +134,35 @@ $ failpack list --json   # or: failpack packs --json
 
 ### 5a) Prove it hermetically (no live Claude Code)
 
-From a FailPack **checkout** — same discovery as a real laptop, fake HOME only:
+After `pip install failpack` — no clone required. Same discovery as a real
+laptop, fake HOME only (bundled fixture ships in the wheel):
 
 ```bash
-$ cd /path/to/failpack
-$ ./examples/claude-latest-hermetic.sh
-==> hermetic Claude one-shot (HOME=/tmp/failpack-claude-hermetic.…)
+$ failpack demo --claude-hermetic
+failpack demo --claude-hermetic  ·  failpack 1.5.8
+
+==> 1/4  seed fake HOME + capture --claude-latest → 'claude-hermetic'
+    layout: ~/.claude/projects/<name>/*.jsonl
+    fixture → ~/.claude/projects/hermetic-demo/session.jsonl
 …
-Claude one-shot: newest session under ~/.claude/projects
-  using: …/session.jsonl
 Captured pack 'claude-hermetic' → …/.failpack/packs/claude-hermetic
+
+==> 2/4  promote --suggest --write → golden
 …
+
+==> 3/4  lint 'claude-hermetic'
 RESULT: PASS
+
+==> 4/4  replay — should PASS
+RESULT: PASS
+
+PASS: hermetic Claude one-shot proved (capture --claude-latest without a live Claude install).
+Done. Hermetic pack left at …/.failpack/packs/claude-hermetic (status=golden).
+Clean up with:  failpack rm claude-hermetic --force
+RESULT: OK
 ```
+
+Checkout alias (thin wrapper): `./examples/claude-latest-hermetic.sh`.
 
 Or the manual fake-HOME dance (also covered in CI). Layout is always
 `~/.claude/projects/<name>/*.jsonl` — accept/hermetic demos use
@@ -155,6 +171,7 @@ Or the manual fake-HOME dance (also covered in CI). Layout is always
 ```bash
 export HOME=/tmp/failpack-fake-home
 mkdir -p "$HOME/.claude/projects/demo"
+# from a checkout, or copy from the bundled package data:
 cp fixtures/claude-code-failure.jsonl "$HOME/.claude/projects/demo/session.jsonl"
 failpack capture --claude-latest --id from-fake-home --force
 failpack promote --suggest --write from-fake-home   # applies; no plain promote needed
@@ -209,18 +226,17 @@ failpack lint
 ## See also
 
 - [`five-minute-demo.sh`](five-minute-demo.sh) — delegates to `failpack demo`
-- [`claude-latest-hermetic.sh`](claude-latest-hermetic.sh) — fake-HOME Claude one-shot proof
+- [`claude-latest-hermetic.sh`](claude-latest-hermetic.sh) — thin alias for `failpack demo --claude-hermetic`
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
 - [`../docs/SUPPORT.md`](../docs/SUPPORT.md) — GitHub Issues + email
-- [`../RELEASE_NOTES_1.5.7.md`](../RELEASE_NOTES_1.5.7.md) — tagged GitHub Release `v1.5.7`
+- [`../RELEASE_NOTES_1.5.8.md`](../RELEASE_NOTES_1.5.8.md) — tagged GitHub Release `v1.5.8`
+- [`../RELEASE_NOTES_1.5.7.md`](../RELEASE_NOTES_1.5.7.md) — prior Release `v1.5.7`
 - [`../RELEASE_NOTES_1.5.6.md`](../RELEASE_NOTES_1.5.6.md) — prior Release `v1.5.6`
 - [`../RELEASE_NOTES_1.5.5.md`](../RELEASE_NOTES_1.5.5.md) — prior Release `v1.5.5`
 - [`../RELEASE_NOTES_1.5.4.md`](../RELEASE_NOTES_1.5.4.md) — prior Release `v1.5.4`
 - [`../RELEASE_NOTES_1.5.3.md`](../RELEASE_NOTES_1.5.3.md) — prior Release `v1.5.3`
 - [`../RELEASE_NOTES_1.5.2.md`](../RELEASE_NOTES_1.5.2.md) — prior Release `v1.5.2`
 - [`../RELEASE_NOTES_1.5.0.md`](../RELEASE_NOTES_1.5.0.md) — prior Release `v1.5.0`
-- [`../docs/QUALITY_BAR.md`](../docs/QUALITY_BAR.md) — honest sell-ready gaps
-- [`../CHANGELOG.md`](../CHANGELOG.md)
-- Landing (GitHub Pages): [https://jiangskirk.github.io/failpack/](https://jiangskirk.github.io/failpack/)
-  — if that URL 404s, flip Settings → Pages → Source: **GitHub Actions** (one-time)
+- [`../RELEASE_NOTES_1.4.0.md`](../RELEASE_NOTES_1.4.0.md) — prior Release `v1.4.0`
+- [`../docs/QUALITY_BAR.md`](../docs/QUALITY_BAR.md)

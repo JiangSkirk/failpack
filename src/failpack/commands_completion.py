@@ -90,7 +90,7 @@ _failpack() {{
       return 0
       ;;
     demo)
-      COMPREPLY=( $(compgen -W "--id --no-keep --skip-break --fast" -- "${{cur}}") )
+      COMPREPLY=( $(compgen -W "--id --no-keep --skip-break --fast --claude-hermetic" -- "${{cur}}") )
       return 0
       ;;
   esac
@@ -229,7 +229,8 @@ _failpack() {{
             '--id[pack id]:id:' \\
             '--no-keep[remove demo pack]' \\
             '--skip-break[skip break/restore]' \\
-            '--fast[~60s stranger path]'
+            '--fast[~60s stranger path]' \\
+            '--claude-hermetic[prove capture --claude-latest hermetically]'
           ;;
       esac
       ;;
