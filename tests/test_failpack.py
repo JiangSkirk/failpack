@@ -573,7 +573,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_3_0() -> None:
-    assert __version__ == "1.5.5"
+    assert __version__ == "1.5.6"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -1106,6 +1106,7 @@ def test_examples_docs_exist() -> None:
     assert walk.is_file()
     walk_body = walk.read_text(encoding="utf-8")
     assert "git+https://github.com/JiangSkirk/failpack.git" in walk_body
+    assert "pip install failpack" in walk_body
     assert "doctor --score" in walk_body
     assert "failpack demo --fast" in walk_body
     assert "~60s" in walk_body or "60s" in walk_body
@@ -1114,6 +1115,7 @@ def test_examples_docs_exist() -> None:
     assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "cursor-projects" in walk_body
     assert "~/.local/bin" in walk_body
+    assert "RELEASE_NOTES_1.5.6" in walk_body or "v1.5.6" in walk_body
     assert "RELEASE_NOTES_1.5.5" in walk_body or "v1.5.5" in walk_body
     assert "RELEASE_NOTES_1.5.4" in walk_body or "v1.5.4" in walk_body
     assert "RELEASE_NOTES_1.5.3" in walk_body or "v1.5.3" in walk_body
@@ -1124,9 +1126,9 @@ def test_examples_docs_exist() -> None:
     assert "failpack rm" in walk_body and "--force" in walk_body
     assert "rm -rf" not in walk_body
     assert "SUPPORT.md" in walk_body
-    assert "1.5.5" in walk_body
+    assert "1.5.6" in walk_body
     contributing = (REPO / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert "1.5.5" in contributing
+    assert "1.5.6" in contributing
     assert "8725598a@gmail.com" in contributing
     assert "SUPPORT.md" in contributing
 
@@ -1135,9 +1137,10 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.5.6" in changelog
     assert "1.5.5" in changelog
-    assert "1.5.4" in changelog
     assert "pages.yml" in changelog or "GitHub Pages" in changelog
+    assert "1.5.4" in changelog
     assert "1.5.3" in changelog
     assert "1.5.2" in changelog
     assert "1.5.1" in changelog
@@ -1147,6 +1150,7 @@ def test_changelog_and_contributing_exist() -> None:
     assert "SUPPORT.md" in changelog
     assert "1.4.0" in changelog
     assert "1.3.0" in changelog
+    assert "PyPI" in changelog or "pip install failpack" in changelog
     assert "1.2.0" in changelog
     assert "1.1.0" in changelog
     assert "1.0.0" in changelog
@@ -1374,13 +1378,16 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
-    assert "1.5.5" in text
-    assert "1.5.4" in text or "1.5.3" in text or "1.5.2" in text or "1.5.1" in text or "1.5.0" in text
+    assert "1.5.6" in text
+    assert "1.5.5" in text or "1.5.4" in text or "1.5.3" in text or "1.5.2" in text or "1.5.1" in text or "1.5.0" in text
     assert "1.5.0" in text
     assert "1.4.0" in text
     assert "1.3.0" in text
     assert "doctor --score" in text
     assert 'git+https://github.com/JiangSkirk/failpack.git' in text
+    assert "pip install failpack" in text
+    assert "when published" not in text.lower()
+    assert "preferred once published" not in text.lower()
     assert "~60-second path" in text or "demo --fast" in text
     assert "Daily loop" in text
     assert "Pack lifecycle" in text
@@ -1420,23 +1427,32 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "real-user" in quality.lower() or "real user" in quality.lower()
     assert "SUPPORT.md" in quality or "Support path" in quality
     assert "Done" in quality or "✅" in quality
-    assert "1.5.5" in quality
+    assert "1.5.6" in quality
+    assert "Still blocked" not in quality
+    assert "first upload" in quality.lower() or "1.5.5" in quality
     assert "jiangskirk.github.io/failpack" in quality
     assert "pages.yml" in quality or "GitHub Pages" in quality or "workflow shipped" in quality.lower()
+    assert "one-time" in quality.lower() or "Settings" in quality
     assert "demo-five-minute" in quality or "leave" in quality.lower()
     publish = (REPO / "docs" / "PUBLISH.md").read_text(encoding="utf-8")
     assert "python -m build" in publish
     assert "twine" in publish
     assert "testpypi" in publish.lower() or "TestPyPI" in publish
+    assert "live on PyPI" in publish or "1.5.5" in publish
+    assert "pip install failpack" in publish
     packs = (REPO / "docs" / "PACKS.md").read_text(encoding="utf-8")
     assert "demo-missing-import" in packs
     assert "demo --fast" in packs
     landing = (REPO / "docs" / "LANDING.md").read_text(encoding="utf-8")
     assert "failpack demo --fast" in landing
+    assert "pip install failpack" in landing
+    assert "when published" not in landing.lower()
     site = (REPO / "site" / "index.html").read_text(encoding="utf-8")
     assert "failpack demo --fast" in site
     assert "pip install failpack" in site
     assert 'git+https://github.com/JiangSkirk/failpack.git' in site
+    assert "when published" not in site.lower()
+    assert "1.5.6" in site
     assert "Checkout (placeholder)" in site or "checkout" in site.lower()
     assert "coming soon" in site.lower()
     assert "privacy.html" in site
@@ -1449,6 +1465,15 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "upload-pages-artifact" in pages_wf
     assert "deploy-pages" in pages_wf
     assert "github-pages" in pages_wf
+    assert (REPO / "RELEASE_NOTES_1.5.6.md").is_file()
+    notes156 = (REPO / "RELEASE_NOTES_1.5.6.md").read_text(encoding="utf-8")
+    assert "1.5.6" in notes156
+    assert "@v1.5.0" in notes156
+    assert "jiangskirk.github.io/failpack" in notes156
+    assert "demo --fast" in notes156
+    assert "pip install failpack" in notes156
+    assert "when published" not in notes156.lower()
+    assert "PyPI" in notes156
     assert (REPO / "RELEASE_NOTES_1.5.5.md").is_file()
     notes155 = (REPO / "RELEASE_NOTES_1.5.5.md").read_text(encoding="utf-8")
     assert "1.5.5" in notes155

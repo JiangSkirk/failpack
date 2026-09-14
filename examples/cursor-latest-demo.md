@@ -29,9 +29,10 @@ clear **not found** message and points here — it does not invent paths.
 ## Prerequisites
 
 ```bash
-pip install "git+https://github.com/JiangSkirk/failpack.git"
+pip install failpack
+# or: pip install "git+https://github.com/JiangSkirk/failpack.git"
 # or from a checkout: pip install -e ".[dev]"
-failpack --version    # failpack 1.5.5+
+failpack --version    # failpack 1.5.6+
 failpack doctor --score
 failpack init         # if this repo isn't already initialized
 ```

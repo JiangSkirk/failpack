@@ -68,9 +68,11 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack migrate\n"
             "  failpack init --ci\n"
             "\n"
-            "install (no PyPI required):\n"
-            '  pip install "git+https://github.com/JiangSkirk/failpack.git"\n'
+            "install:\n"
+            "  pip install failpack\n"
             "  failpack demo --fast\n"
+            "  # optional: pip install "
+            '"git+https://github.com/JiangSkirk/failpack.git"\n'
             "\n"
             "environment:\n"
             "  NO_COLOR      disable ANSI colors\n"
@@ -146,8 +148,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack demo --no-keep\n"
             "  failpack demo --skip-break\n"
             "\n"
-            'Zero-setup: pip install "git+https://github.com/JiangSkirk/failpack.git"\n'
-            "             && failpack demo --fast\n"
+            "Zero-setup: pip install failpack && failpack demo --fast\n"
+            '  (git fallback: pip install "git+https://github.com/JiangSkirk/failpack.git")\n'
             "Uses a bundled fixture (same path as examples/five-minute-demo.sh).\n"
         ),
     )

@@ -1,22 +1,28 @@
 # Stranger walkthrough — FailPack from zero (~60s)
 
-Copy-paste terminal session a new user would see: install from git →
-`failpack demo --fast` → optional Claude one-shot. No PyPI token. No Echo /
-Orin / titan-agent.
+Copy-paste terminal session a new user would see: `pip install failpack` →
+`failpack demo --fast` → optional Claude one-shot. No Echo / Orin /
+titan-agent. Git install is fallback only.
 
 Assumes Python **3.11+** and a clean shell (empty project dir — not the FailPack
 repo checkout). Target: **about a minute** to first PASS after install.
 
-## 1) Install from git
+## 1) Install from PyPI
+
+```bash
+$ pip install failpack
+Collecting failpack
+  …
+Successfully installed failpack-1.5.6 …
+
+$ failpack --version
+failpack 1.5.6
+```
+
+Git fallback (optional):
 
 ```bash
 $ pip install "git+https://github.com/JiangSkirk/failpack.git"
-Collecting git+https://github.com/JiangSkirk/failpack.git
-  …
-Successfully installed failpack-1.5.5 …
-
-$ failpack --version
-failpack 1.5.5
 ```
 
 Editable checkout (optional, for contributing):
@@ -26,7 +32,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.5.5
+failpack 1.5.6
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -39,7 +45,7 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --fast
-failpack demo --fast  (~60s wow)  ·  failpack 1.5.5
+failpack demo --fast  (~60s wow)  ·  failpack 1.5.6
 
 ==> 1/3  capture bundled fixture → 'demo-five-minute'
 Captured pack 'demo-five-minute' → …/.failpack/packs/demo-five-minute
@@ -168,7 +174,8 @@ failpack lint
 - [`claude-latest-demo.md`](claude-latest-demo.md) — Claude one-shot detail
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
 - [`../docs/SUPPORT.md`](../docs/SUPPORT.md) — GitHub Issues + email
-- [`../RELEASE_NOTES_1.5.5.md`](../RELEASE_NOTES_1.5.5.md) — tagged GitHub Release `v1.5.5`
+- [`../RELEASE_NOTES_1.5.6.md`](../RELEASE_NOTES_1.5.6.md) — tagged GitHub Release `v1.5.6`
+- [`../RELEASE_NOTES_1.5.5.md`](../RELEASE_NOTES_1.5.5.md) — prior Release `v1.5.5`
 - [`../RELEASE_NOTES_1.5.4.md`](../RELEASE_NOTES_1.5.4.md) — prior Release `v1.5.4`
 - [`../RELEASE_NOTES_1.5.3.md`](../RELEASE_NOTES_1.5.3.md) — prior Release `v1.5.3`
 - [`../RELEASE_NOTES_1.5.2.md`](../RELEASE_NOTES_1.5.2.md) — prior Release `v1.5.2`

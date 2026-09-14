@@ -117,7 +117,8 @@ def cmd_demo(
     promote → replay only (skips doctor dump, status dump, break/restore,
     migrate). Mirrors README::
 
-        pip install "git+https://github.com/JiangSkirk/failpack.git" && failpack demo --fast
+        pip install failpack && failpack demo --fast
+        # optional: pip install "git+https://github.com/JiangSkirk/failpack.git"
     """
     project = find_root(root) if root is None else root.resolve()
     if not packs_dir(project).is_dir():

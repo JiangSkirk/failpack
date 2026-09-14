@@ -25,6 +25,7 @@ SCORE_WEIGHTS: dict[str, int] = {
     "golden_count": 20,
 }
 
+PYPI_INSTALL = "pip install failpack"
 GIT_INSTALL = 'pip install "git+https://github.com/JiangSkirk/failpack.git"'
 
 
@@ -102,7 +103,7 @@ def _check_python() -> DoctorCheck:
         f"{version_s} (>= {need} required)",
         fix=(
             f"Install Python {need}+ and reinstall failpack "
-            f'({GIT_INSTALL}).'
+            f"({PYPI_INSTALL}; or {GIT_INSTALL})."
         ),
     )
 
