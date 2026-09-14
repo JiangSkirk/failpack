@@ -1,0 +1,11 @@
+{
+  "created_at": "2026-09-14T08:39:32+00:00",
+  "event_count": 8,
+  "exit_code": 4,
+  "id": "demo-wrong-test-cmd",
+  "promoted_at": "2026-09-14T08:39:32+00:00",
+  "session_id": "demo-wrong-test-cmd",
+  "session_status": "failed",
+  "source_transcript": "/workspace/fixtures/claude-code-wrong-test-cmd.jsonl",
+  "status": "golden"
+}

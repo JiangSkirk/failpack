@@ -5,7 +5,7 @@ description: Golden assertions for this failure session. Replay fails CI if fing
 exit_code: 1
 fingerprints:
 - path: artifacts/digest.json
-  sha256: e3923408bba81d655bcd81a67096632a670fca37a8fa667209c93a78f9d760a4
+  sha256: daf15f65c6099be8fdd123e87e767587d8f779531e17efd92170b42aa044761e
 - path: artifacts/exit_code.txt
   sha256: 4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865
 - path: artifacts/status.txt
@@ -21,3 +21,8 @@ fingerprints:
 substrings:
 - path: artifacts/error.txt
   contains: 'NameError: name ''health_payload'' is not defined'
+min_events: 11
+glob_fingerprint:
+  pattern: artifacts/files/**
+  sha256: dbb56cdd1ba527aef1be195567ba2042b6e28b391b1b7c27b7bd84947d9cc7cd
+  file_count: 2

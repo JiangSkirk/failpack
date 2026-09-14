@@ -11,22 +11,45 @@ This is **not** a security gate. It is a regression memory for agent sessions.
 | Command | What it does |
 |---|---|
 | `failpack init` | Create `.failpack/` layout |
+| `failpack list` | List packs (id, status, exit_code, promoted_at) |
+| `failpack status <id>` | Show meta + assertion summary for one pack |
 | `failpack capture <transcript.jsonl>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
-| `failpack promote <id>` | Mark golden + write `assertions.yaml` (fingerprints, substrings, exit code) |
+| `failpack promote <id>` | Mark golden + write `assertions.yaml` |
 | `failpack replay <id>` | Verify assertions; **exit 0** on pass, **non-zero** on fail |
 
-Shipped demo pack: **`demo-missing-import`** (agent forgot an import; tests fail with `NameError`).
+Shipped golden packs:
+
+- **`demo-missing-import`** — agent forgot an import; tests fail with `NameError`
+- **`demo-wrong-test-cmd`** — agent ran pytest on a missing file (`exit_code=4`)
 
 ## Quickstart
 
 ```bash
 # from this repo
-uv sync --extra dev   # or: pip install -e ".[dev]"
-failpack replay demo-missing-import   # exits 0
+pip install -e ".[dev]"   # or: uv sync --extra dev
+failpack list
+failpack replay demo-missing-import    # exits 0
+failpack replay demo-wrong-test-cmd    # exits 0
+failpack status demo-missing-import
+```
 
-# capture → promote your own fixture
+### Capture your own failure
+
+```bash
 failpack init
+
+# path to a fixture / exported transcript
 failpack capture fixtures/claude-code-failure.jsonl --id my-failure
+
+# or newest session under a Claude Code projects directory
+failpack capture --from-claude-project ~/.claude/projects --id my-failure
+
+# or pipe JSONL on stdin
+failpack capture --stdin --id my-failure < session.jsonl
+
+# or a glob (newest match wins if several)
+failpack capture --glob 'fixtures/*.jsonl' --id my-failure
+
 failpack promote my-failure
 failpack replay my-failure
 ```
@@ -35,7 +58,7 @@ Break a golden assertion (or mutate an artifact under `.failpack/packs/<id>/arti
 
 ### CI
 
-See [`.github/workflows/failpack-replay.yml`](.github/workflows/failpack-replay.yml): install → pytest → `failpack replay demo-missing-import`.
+See [`.github/workflows/failpack-replay.yml`](.github/workflows/failpack-replay.yml): install → pytest → replay **all** golden packs under `.failpack/packs/`.
 
 ## Pack layout
 
@@ -53,6 +76,10 @@ Assertions cover:
 - **exit code** from the captured session
 - **SHA-256 fingerprints** of key artifacts
 - **expected substrings** (e.g. the distinctive error line)
+- **optional `min_events`** — fail if the session is shorter than expected
+- **optional `glob_fingerprint`** — combined hash of `artifacts/files/**` (when files were written)
+
+Older packs without `min_events` / `glob_fingerprint` still replay.
 
 ## How money works later
 
@@ -76,7 +103,7 @@ Details and landing copy: [`MONETIZATION.md`](MONETIZATION.md).
 ## Development
 
 ```bash
-uv sync --extra dev
+pip install -e ".[dev]"   # or: uv sync --extra dev
 pytest -q
 failpack --help
 ```

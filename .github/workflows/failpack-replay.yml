@@ -21,5 +21,16 @@ jobs:
       - name: Unit tests
         run: pytest -q
 
-      - name: Replay golden demo pack
-        run: failpack replay demo-missing-import
+      - name: Replay all golden packs
+        run: |
+          set -euo pipefail
+          failpack list
+          for pack in .failpack/packs/*/meta.json; do
+            id="$(basename "$(dirname "$pack")")"
+            status="$(python -c "import json; print(json.load(open('$pack'))['status'])")"
+            if [ "$status" = "golden" ]; then
+              echo "::group::replay $id"
+              failpack replay "$id"
+              echo "::endgroup::"
+            fi
+          done

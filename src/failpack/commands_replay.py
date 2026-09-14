@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
-from failpack.pack import artifacts_dir, read_assertions, read_meta, sha256_file
+from failpack.pack import artifacts_dir, glob_fingerprint, read_assertions, read_meta, sha256_file
 from failpack.paths import require_pack
 
 
@@ -32,6 +33,19 @@ class ReplayReport:
             lines.append(f"  [{mark}] {c.name}: {c.detail}")
         lines.append("RESULT: " + ("PASS" if self.ok else "FAIL"))
         return lines
+
+
+def _normalize_glob_entries(assertions: dict[str, Any]) -> list[dict[str, Any]]:
+    raw = assertions.get("glob_fingerprint")
+    if raw is None:
+        raw = assertions.get("glob_fingerprints")
+    if raw is None:
+        return []
+    if isinstance(raw, dict):
+        return [raw]
+    if isinstance(raw, list):
+        return [g for g in raw if isinstance(g, dict)]
+    return []
 
 
 def cmd_replay(pack_id: str, *, root: Path | None = None) -> ReplayReport:
@@ -63,6 +77,24 @@ def cmd_replay(pack_id: str, *, root: Path | None = None) -> ReplayReport:
                 )
             )
 
+    # min_events (optional, backward compatible)
+    min_events = assertions.get("min_events")
+    if min_events is not None:
+        actual_events = meta.get("event_count")
+        if actual_events is None:
+            report.checks.append(
+                CheckResult("min_events", False, "meta.event_count missing")
+            )
+        else:
+            ok = int(actual_events) >= int(min_events)
+            report.checks.append(
+                CheckResult(
+                    "min_events",
+                    ok,
+                    f"expected >= {min_events}, got {actual_events}",
+                )
+            )
+
     # fingerprint checks
     for fp in assertions.get("fingerprints") or []:
         rel = fp["path"]
@@ -75,6 +107,33 @@ def cmd_replay(pack_id: str, *, root: Path | None = None) -> ReplayReport:
         actual = sha256_file(path)
         ok = actual == expected
         detail = "match" if ok else f"expected {expected[:12]}… got {actual[:12]}…"
+        report.checks.append(CheckResult(name, ok, detail))
+
+    # glob_fingerprint checks (optional)
+    for entry in _normalize_glob_entries(assertions):
+        pattern = entry.get("pattern") or entry.get("glob") or ""
+        expected = entry.get("sha256") or ""
+        name = f"glob_fingerprint:{pattern}"
+        if not pattern or not expected:
+            report.checks.append(CheckResult(name, False, "incomplete glob_fingerprint entry"))
+            continue
+        actual, matched = glob_fingerprint(pack, pattern)
+        expected_count = entry.get("file_count")
+        if expected_count is not None and len(matched) != int(expected_count):
+            report.checks.append(
+                CheckResult(
+                    name,
+                    False,
+                    f"file_count expected {expected_count}, got {len(matched)}",
+                )
+            )
+            continue
+        ok = actual == expected
+        detail = (
+            f"match ({len(matched)} files)"
+            if ok
+            else f"expected {expected[:12]}… got {actual[:12]}… ({len(matched)} files)"
+        )
         report.checks.append(CheckResult(name, ok, detail))
 
     # substring checks

@@ -1,0 +1,2 @@
+ERROR: file or directory not found: tests/test_auth.py
+Wrong test command — pytest targeted a missing file (exit_code=4)
