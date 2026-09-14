@@ -71,7 +71,7 @@ def find_claude_latest(*, home: Path | None = None) -> Path:
             "  • Run a Claude Code session that fails, then:\n"
             "      failpack capture --claude-latest --id my-failure\n"
             "  • No sessions yet? Prove the path hermetically (fake HOME + fixture):\n"
-            "      ./examples/claude-latest-hermetic.sh\n"
+            "      failpack demo --claude-hermetic\n"
             "    or: failpack demo --fast\n"
             "  • Or pass a transcript path / --stdin."
         )
@@ -83,7 +83,7 @@ def find_claude_latest(*, home: Path | None = None) -> Path:
             "One-shot: finish a Claude Code run, then:\n"
             "  failpack capture --claude-latest --id my-failure\n"
             "No sessions yet? Try the fixture path first:\n"
-            "  ./examples/claude-latest-hermetic.sh\n"
+            "  failpack demo --claude-hermetic\n"
             "  # or: failpack demo --fast"
         ) from exc
 

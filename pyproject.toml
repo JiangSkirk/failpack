@@ -1,6 +1,6 @@
 [project]
 name = "failpack"
-version = "1.5.7"
+version = "1.5.8"
 description = "Turn coding-agent failure sessions into golden CI regression packs"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -53,6 +53,7 @@ packages = ["src/failpack"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/failpack/data/demo-failure.jsonl" = "failpack/data/demo-failure.jsonl"
+"src/failpack/data/claude-code-failure.jsonl" = "failpack/data/claude-code-failure.jsonl"
 
 [tool.hatch.build.targets.sdist]
 include = [

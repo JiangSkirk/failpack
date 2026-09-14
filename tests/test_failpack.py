@@ -573,7 +573,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_3_0() -> None:
-    assert __version__ == "1.5.7"
+    assert __version__ == "1.5.8"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -1070,7 +1070,7 @@ def test_claude_latest_missing_projects_dir(tmp_path: Path) -> None:
     empty_home.mkdir()
     with pytest.raises(
         FileNotFoundError,
-        match=r"claude-latest-hermetic|demo --fast|one-shot|\.claude/projects",
+        match=r"claude-hermetic|demo --fast|one-shot|\.claude/projects",
     ):
         find_claude_latest(home=empty_home)
 
@@ -1184,12 +1184,12 @@ def test_examples_docs_exist() -> None:
     assert "promote --suggest" in body
     assert "fake HOME" in body or "fake-home" in body
     assert "claude-latest-hermetic" in body
+    assert "demo --claude-hermetic" in body
     hermetic = REPO / "examples" / "claude-latest-hermetic.sh"
     assert hermetic.is_file()
     hermetic_text = hermetic.read_text(encoding="utf-8")
-    assert "claude-latest" in hermetic_text
-    assert "fixtures/claude-code-failure.jsonl" in hermetic_text
-    assert "HOME=" in hermetic_text or "FAKE_HOME" in hermetic_text
+    assert "demo --claude-hermetic" in hermetic_text
+    assert "delegating" in hermetic_text or "thin" in hermetic_text.lower() or "wrapper" in hermetic_text.lower() or "failpack demo --claude-hermetic" in hermetic_text
     cursor_doc = REPO / "examples" / "cursor-latest-demo.md"
     assert cursor_doc.is_file()
     cursor_body = cursor_doc.read_text(encoding="utf-8")
@@ -1207,8 +1207,10 @@ def test_examples_docs_exist() -> None:
     assert "promote --suggest" in walk_body
     assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "claude-latest-hermetic" in walk_body
+    assert "demo --claude-hermetic" in walk_body
     assert "cursor-projects" in walk_body
     assert "~/.local/bin" in walk_body
+    assert "RELEASE_NOTES_1.5.8" in walk_body or "v1.5.8" in walk_body
     assert "RELEASE_NOTES_1.5.7" in walk_body or "v1.5.7" in walk_body
     assert "RELEASE_NOTES_1.5.6" in walk_body or "v1.5.6" in walk_body
     assert "RELEASE_NOTES_1.5.5" in walk_body or "v1.5.5" in walk_body
@@ -1221,9 +1223,9 @@ def test_examples_docs_exist() -> None:
     assert "failpack rm" in walk_body and "--force" in walk_body
     assert "rm -rf" not in walk_body
     assert "SUPPORT.md" in walk_body
-    assert "1.5.7" in walk_body
+    assert "1.5.8" in walk_body
     contributing = (REPO / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert "1.5.7" in contributing
+    assert "1.5.8" in contributing
     assert "claude-latest-hermetic" in contributing
     assert "8725598a@gmail.com" in contributing
     assert "SUPPORT.md" in contributing
@@ -1233,6 +1235,7 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.5.8" in changelog
     assert "1.5.7" in changelog
     assert "1.5.6" in changelog
     assert "claude-latest-hermetic" in changelog or "Hermetic Claude" in changelog
@@ -1285,7 +1288,7 @@ def test_doctor_claude_projects_missing_home(tmp_path: Path, workspace: Path) ->
     assert "not found" in claude.detail
     assert claude.fix and "demo --fast" in claude.fix
     assert "--claude-latest" in (claude.fix or "")
-    assert "claude-latest-hermetic" in (claude.fix or "") or "fake HOME" in (claude.fix or "")
+    assert "claude-hermetic" in (claude.fix or "") or "fake HOME" in (claude.fix or "")
     cursor = next(c for c in report.checks if c.name == "cursor-projects")
     assert cursor.ok
     assert "not found" in cursor.detail
@@ -1413,6 +1416,69 @@ def test_cli_demo_fast(workspace: Path, capsys: pytest.CaptureFixture[str]) -> N
     assert "RESULT: OK" in out
 
 
+def test_demo_claude_hermetic_library(workspace: Path) -> None:
+    """Library path: demo --claude-hermetic without a live Claude install."""
+    from failpack.commands_demo import (
+        CLAUDE_HERMETIC_PACK_ID,
+        claude_hermetic_fixture_bytes,
+        cmd_demo,
+    )
+
+    assert claude_hermetic_fixture_bytes()  # bundled / repo fixture loads
+    report = cmd_demo(root=workspace, claude_hermetic=True, keep=True)
+    assert report.ok, "\n".join(report.summary_lines())
+    assert report.claude_hermetic
+    text = "\n".join(report.summary_lines())
+    assert "demo --claude-hermetic" in text
+    assert "PASS: hermetic Claude one-shot" in text
+    assert "RESULT: OK" in text
+    assert f"failpack rm {CLAUDE_HERMETIC_PACK_ID} --force" in text
+    assert "rm -rf" not in text
+    pack = workspace / ".failpack" / "packs" / CLAUDE_HERMETIC_PACK_ID
+    assert (pack / "assertions.yaml").is_file()
+    assert cmd_replay(CLAUDE_HERMETIC_PACK_ID, root=workspace).ok
+
+
+def test_cli_demo_claude_hermetic(
+    workspace: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """CLI: failpack demo --claude-hermetic (and --fast) without Claude binary."""
+    with pytest.raises(SystemExit) as exc:
+        main(
+            [
+                "--root",
+                str(workspace),
+                "demo",
+                "--claude-hermetic",
+                "--fast",
+                "--id",
+                "cli-claude-hermetic",
+            ]
+        )
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "demo --claude-hermetic" in out
+    assert "capture --claude-latest" in out or "claude-latest" in out
+    assert "PASS: hermetic Claude one-shot" in out
+    assert "RESULT: OK" in out
+    assert "RESULT: PASS" in out
+    assert (workspace / ".failpack" / "packs" / "cli-claude-hermetic" / "assertions.yaml").is_file()
+
+
+def test_demo_claude_hermetic_tolerates_demo_leftover(workspace: Path) -> None:
+    """Hermetic demo stays green when demo --fast leftover is already present."""
+    from failpack.commands_demo import cmd_demo
+
+    leftover = cmd_demo(root=workspace, pack_id="demo-five-minute", keep=True, fast=True)
+    assert leftover.ok, "\n".join(leftover.summary_lines())
+    report = cmd_demo(
+        root=workspace, pack_id="claude-hermetic-with-leftover", claude_hermetic=True, keep=True
+    )
+    assert report.ok, "\n".join(report.summary_lines())
+    assert (workspace / ".failpack" / "packs" / "demo-five-minute").is_dir()
+    assert (workspace / ".failpack" / "packs" / "claude-hermetic-with-leftover").is_dir()
+
+
 def test_demo_no_keep(workspace: Path) -> None:
     from failpack.commands_demo import cmd_demo
 
@@ -1450,22 +1516,36 @@ def test_help_mentions_demo_export_import() -> None:
     assert "import" in help_text
     assert "show" in help_text
     assert "explain" in help_text
+    assert "demo --claude-hermetic" in help_text
     names = set()
+    demo_help = None
     for action in parser._subparsers._group_actions:  # noqa: SLF001
         names.update(action.choices.keys())
+        for name, sub in action.choices.items():
+            if name == "demo":
+                demo_help = sub.format_help()
     assert "demo" in names
     assert "export" in names
     assert "import" in names
     assert "show" in names
     assert "explain" in names
+    assert demo_help is not None
+    assert "--claude-hermetic" in demo_help
+    assert "--fast" in demo_help
 
 
 def test_bundled_demo_fixture_loads() -> None:
-    from failpack.commands_demo import demo_fixture_bytes
+    from failpack.commands_demo import (
+        claude_hermetic_fixture_bytes,
+        demo_fixture_bytes,
+    )
 
     data = demo_fixture_bytes()
     assert b"session_start" in data
     assert len(data) > 100
+    hermetic = claude_hermetic_fixture_bytes()
+    assert b"session_start" in hermetic
+    assert hermetic == data  # same failure transcript content
 
 
 def test_readme_has_three_command_happy_path() -> None:
@@ -1476,8 +1556,9 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
-    assert "1.5.7" in text
+    assert "1.5.8" in text
     assert "claude-latest-hermetic" in text
+    assert "demo --claude-hermetic" in text
     assert "1.5.6" in text or "1.5.5" in text or "1.5.4" in text or "1.5.3" in text or "1.5.2" in text or "1.5.1" in text or "1.5.0" in text
     assert "1.5.0" in text
     assert "1.4.0" in text
@@ -1512,6 +1593,8 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "8725598a@gmail.com" in text
     assert "SUPPORT.md" in text
     assert "jiangskirk.github.io/failpack" in text
+    assert (REPO / "src" / "failpack" / "data" / "claude-code-failure.jsonl").is_file()
+    assert (REPO / "src" / "failpack" / "data" / "demo-failure.jsonl").is_file()
     assert (REPO / "docs" / "PACKS.md").is_file()
     assert (REPO / "docs" / "PUBLISH.md").is_file()
     assert (REPO / "docs" / "QUALITY_BAR.md").is_file()
@@ -1526,9 +1609,10 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "real-user" in quality.lower() or "real user" in quality.lower()
     assert "SUPPORT.md" in quality or "Support path" in quality
     assert "Done" in quality or "✅" in quality
-    assert "1.5.7" in quality
+    assert "1.5.8" in quality
     assert "Hermetic Claude" in quality or "hermetic" in quality.lower()
     assert "claude-latest-hermetic" in quality
+    assert "demo --claude-hermetic" in quality
     assert "Still blocked" not in quality
     assert "first upload" in quality.lower() or "1.5.5" in quality
     assert "jiangskirk.github.io/failpack" in quality
@@ -1547,14 +1631,16 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "demo --fast" in packs
     landing = (REPO / "docs" / "LANDING.md").read_text(encoding="utf-8")
     assert "failpack demo --fast" in landing
+    assert "demo --claude-hermetic" in landing
     assert "pip install failpack" in landing
     assert "when published" not in landing.lower()
     site = (REPO / "site" / "index.html").read_text(encoding="utf-8")
     assert "failpack demo --fast" in site
+    assert "demo --claude-hermetic" in site
     assert "pip install failpack" in site
     assert 'git+https://github.com/JiangSkirk/failpack.git' in site
     assert "when published" not in site.lower()
-    assert "1.5.7" in site
+    assert "1.5.8" in site
     assert "Checkout (placeholder)" in site or "checkout" in site.lower()
     assert "coming soon" in site.lower()
     assert "privacy.html" in site
@@ -1567,6 +1653,19 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "upload-pages-artifact" in pages_wf
     assert "deploy-pages" in pages_wf
     assert "github-pages" in pages_wf
+    assert (REPO / "RELEASE_NOTES_1.5.8.md").is_file()
+    notes158 = (REPO / "RELEASE_NOTES_1.5.8.md").read_text(encoding="utf-8")
+    assert "1.5.8" in notes158
+    assert "@v1.5.0" in notes158
+    assert "demo --claude-hermetic" in notes158
+    assert "claude-hermetic" in notes158 or "Hermetic" in notes158
+    assert "jiangskirk.github.io/failpack" in notes158
+    assert "demo --fast" in notes158
+    assert "pip install failpack" in notes158
+    assert "when published" not in notes158.lower()
+    assert "do **not** claim" in notes158.lower() or "do not claim" in notes158.lower() or "404" in notes158
+    assert "PyPI" in notes158
+    assert "Do not re-upload" in notes158 or "No PyPI" in notes158 or "no PyPI" in notes158.lower()
     assert (REPO / "RELEASE_NOTES_1.5.7.md").is_file()
     notes157 = (REPO / "RELEASE_NOTES_1.5.7.md").read_text(encoding="utf-8")
     assert "1.5.7" in notes157
@@ -1775,6 +1874,7 @@ def test_completion_bash_and_zsh_smoke() -> None:
     assert "explain" in bash
     assert "diff" in bash
     assert "--fast" in bash
+    assert "--claude-hermetic" in bash
     assert "packs" in bash
     zsh = cmd_completion("zsh")
     assert "#compdef failpack" in zsh
@@ -1782,6 +1882,7 @@ def test_completion_bash_and_zsh_smoke() -> None:
     assert "explain" in zsh
     assert "diff" in zsh
     assert "--fast" in zsh
+    assert "--claude-hermetic" in zsh
     with pytest.raises(ValueError, match="Unsupported shell"):
         cmd_completion("fish")
 

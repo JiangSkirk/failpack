@@ -136,8 +136,8 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
             f"not found ({projects}) — optional",
             fix=(
                 "No sessions yet — try: failpack demo --fast  "
-                "·  or prove Claude one-shot: ./examples/claude-latest-hermetic.sh "
-                "(fake HOME + fixtures/claude-code-failure.jsonl)  "
+                "·  or prove Claude one-shot: failpack demo --claude-hermetic "
+                "(fake HOME + bundled fixture)  "
                 "·  or after a Claude Code run: failpack capture --claude-latest --id my-failure"
             ),
         )
@@ -151,7 +151,7 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
             f"found at {projects} (0 session *.jsonl)",
             fix=(
                 "Empty projects dir — try: failpack demo --fast  "
-                "·  or hermetic one-shot: ./examples/claude-latest-hermetic.sh  "
+                "·  or hermetic one-shot: failpack demo --claude-hermetic  "
                 "·  or after next Claude Code failure: "
                 "failpack capture --claude-latest --id my-failure"
             ),

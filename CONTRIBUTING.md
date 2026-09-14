@@ -15,9 +15,10 @@ Requires Python **3.11+**.
 
 ```bash
 pip install -e ".[dev]"
-failpack --version   # → failpack 1.5.7
+failpack --version   # → failpack 1.5.8
 failpack doctor --score
 failpack demo --fast         # ~60s stranger wow path (recommended)
+failpack demo --claude-hermetic  # prove --claude-latest without Claude
 failpack demo --skip-break   # optional full local wow path without break
 pytest -q
 ```
@@ -66,10 +67,11 @@ home = tmp_path / "fake-home"
 cmd_capture(claude_latest=True, home=home, ...)
 ```
 
-Stranger/CI shell proof (same idea):
+Stranger/CI proof (same idea; pip-first):
 
 ```bash
-./examples/claude-latest-hermetic.sh
+failpack demo --claude-hermetic
+# checkout alias: ./examples/claude-latest-hermetic.sh
 ```
 
 ### Cursor-ish paths (optional, safe docs only)

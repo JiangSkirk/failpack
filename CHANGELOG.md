@@ -5,6 +5,40 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.8] — 2026-09-14
+
+### Added
+
+- **`failpack demo --claude-hermetic`** — first-class pip-installable Claude
+  one-shot proof: fake HOME + bundled fixture → `capture --claude-latest` →
+  `promote --suggest --write` → lint → replay. No live Claude install and no
+  git clone required after `pip install failpack`.
+- Bundled package data `failpack/data/claude-code-failure.jsonl` (hatch
+  force-include), same shipping pattern as `demo-failure.jsonl`.
+- GitHub Release **`v1.5.8`** + [`RELEASE_NOTES_1.5.8.md`](RELEASE_NOTES_1.5.8.md).
+
+### Changed
+
+- [`examples/claude-latest-hermetic.sh`](examples/claude-latest-hermetic.sh) is
+  now a thin wrapper that delegates to `failpack demo --claude-hermetic`.
+- README / stranger walkthrough / QUALITY_BAR / site Quickstart lead with
+  `pip install failpack` then `failpack demo --fast` **and**
+  `failpack demo --claude-hermetic`.
+- Doctor / capture / CLI tips prefer the CLI hermetic path over the checkout
+  script when no Claude sessions exist.
+- Version bump to **1.5.8**.
+- Docs / walkthrough / site version samples → **1.5.8**.
+
+### Notes
+
+- Quality cut for pip-installable Claude hermetic proof. Action pin stays
+  **`@v1.5.0`** (no Action behavior change). **Do not re-upload to PyPI from
+  this agent.**
+- Zero coupling to Echo / Orin / titan-agent. No live Creem / KYC / pay links.
+  Do **not** claim GitHub Pages is live if it still 404s. Remaining wow gaps:
+  real-user packs, unpaid stranger walkthrough, Pages enable (human Settings
+  flip if still dark).
+
 ## [1.5.7] — 2026-09-14
 
 ### Added
