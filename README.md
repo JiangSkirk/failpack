@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** turns a coding-agent **failure session** into a **golden CI regression pack**.
 
@@ -52,7 +52,7 @@ failpack demo
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.2.0
+failpack --version          # → failpack 1.3.0
 failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
 ```
 
@@ -62,13 +62,26 @@ Stranger copy-paste session: [`examples/STRANGER_WALKTHROUGH.md`](examples/STRAN
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
-## What you get (v1.2)
+## Daily loop
+
+The everyday failure → golden → gate cycle:
+
+```bash
+failpack capture --claude-latest --id my-failure   # or --cursor-latest / path
+failpack promote --suggest my-failure              # preview asserts
+failpack promote --suggest --write my-failure      # apply when they look right
+failpack replay my-failure                         # CI signal (STORY + next: on FAIL)
+failpack watch fixtures/claude-code-failure.jsonl --id my-failure --force
+# watch = capture → promote → replay; on FAIL prints the same STORY / next: tips
+```
+
+## What you get (v1.3)
 
 | Command | What it does |
 |---|---|
 | `failpack demo` | **One-command wow:** capture → promote → replay (+ intentional break) |
 | `failpack init` | Create `.failpack/` layout (tip README → `demo` / `--claude-latest` / `--cursor-latest`) |
-| `failpack init --ci` | Also write a starter workflow pinned to `@v1.1.0` (or use `@main`) |
+| `failpack init --ci` | Also write a starter workflow pinned to `@v1.2.0` (or use `@main`) |
 | `failpack doctor` | Check env + Claude/Cursor projects + workspace; print actionable fixes |
 | `failpack doctor --score` | **Readiness 0–100** + checklist (python / packs / claude / cursor / lint / goldens) |
 | `failpack list` | Clean aligned table of packs (id, status, exit, promoted_at) |
@@ -89,7 +102,7 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack rm <id> [--force]` | Delete a pack (golden requires `--force`) |
 | `failpack export <id> [-o pack.tgz]` | Share a golden pack (assertions + expected + meta + artifacts) |
 | `failpack import <pack.tgz>` | Restore into `.failpack/packs/` (`--force` / `--rename`) |
-| `failpack watch <transcript>` | Capture → promote → replay (local; exit 1 on fail) |
+| `failpack watch <transcript>` | Capture → promote → replay (local; **same STORY/`next:` on FAIL** as replay) |
 | `failpack replay <id>` | Verify assertions; **exit 0** on pass, **non-zero** on fail |
 | `failpack replay --all` | Replay every golden pack; **SUMMARY** of fails; exit non-zero if any fail |
 | `failpack replay … --json` | Machine-readable JSON (same exit codes) |
@@ -97,7 +110,7 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack completion bash\|zsh` | Print shell completion script for power users |
 | `failpack migrate` | Stamp `schema_version` (no-op message if already current) |
 
-On failure, replay prints **which check**, **expected vs actual**, a **one-line hint**, a **STORY** block, and a one-line **`next:`** tip (`explain` · `promote --suggest` · `re-promote`). Prefer `failpack explain <id>` when you only want the story. When a **fingerprint** fails and a promote-time text snapshot exists, it also prints a **short unified diff** of expected vs actual artifact text (truncated; disable with `--no-diff`).
+On failure, **replay** and **watch** print **which check**, **expected vs actual**, a **one-line hint**, a **STORY** block, and a one-line **`next:`** tip (`explain` · `promote --suggest` · `re-promote`). Prefer `failpack explain <id>` when you only want the story. When a **fingerprint** fails and a promote-time text snapshot exists, it also prints a **short unified diff** of expected vs actual artifact text (truncated; disable with `--no-diff`).
 
 ## Pack templates (goldens)
 
@@ -247,8 +260,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Prefer @v1.1.0 (release pin). @main is a valid alternative.
-      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.1.0
+      # Prefer @v1.2.0 (release pin). @main is a valid alternative.
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.2.0
         with:
           # defaults (both on):
           # run-lint: "true"        # failpack lint before replay
@@ -257,7 +270,7 @@ jobs:
           # json: "false"
 ```
 
-Or generate a starter workflow (pins `@v1.1.0`; swap to `@main` if you prefer tip):
+Or generate a starter workflow (pins `@v1.2.0`; swap to `@main` if you prefer tip):
 
 ```bash
 failpack init --ci   # writes .github/workflows/failpack.yml
@@ -365,7 +378,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES_1.1.0.md`](RELEASE_NOTES_1.1.0.md) / [`RELEASE_NOTES_1.0.0.md`](RELEASE_NOTES_1.0.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`RELEASE_NOTES_1.2.0.md`](RELEASE_NOTES_1.2.0.md) / [`RELEASE_NOTES_1.1.0.md`](RELEASE_NOTES_1.1.0.md) / [`RELEASE_NOTES_1.0.0.md`](RELEASE_NOTES_1.0.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 

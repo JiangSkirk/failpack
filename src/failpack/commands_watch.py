@@ -26,6 +26,8 @@ def cmd_watch(
     """Capture a transcript, promote it golden, then replay.
 
     Useful for pre-commit docs and local "did this failure stay golden?" checks.
+    The returned ``ReplayReport`` carries the same STORY / ``next:`` tips as
+    ``failpack replay`` on FAIL (printed by the CLI via ``summary_lines()``).
     Returns ``(pack_id, replay_report)``.
     """
     pack = cmd_capture(

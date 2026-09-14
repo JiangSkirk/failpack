@@ -1,12 +1,27 @@
 [project]
 name = "failpack"
-version = "1.2.0"
+version = "1.3.0"
 description = "Turn coding-agent failure sessions into golden CI regression packs"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "FailPack" }]
-keywords = ["ci", "regression", "coding-agent", "golden-pack"]
+keywords = ["ci", "regression", "coding-agent", "golden-pack", "claude-code", "cursor"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]
 dependencies = [
   "pyyaml>=6.0",
 ]
@@ -15,10 +30,15 @@ dependencies = [
 Homepage = "https://github.com/JiangSkirk/failpack"
 Repository = "https://github.com/JiangSkirk/failpack"
 Issues = "https://github.com/JiangSkirk/failpack/issues"
+Changelog = "https://github.com/JiangSkirk/failpack/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/JiangSkirk/failpack#readme"
+"Release Notes" = "https://github.com/JiangSkirk/failpack/releases"
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
+  "build>=1.0",
+  "twine>=5.0",
 ]
 
 [project.scripts]
@@ -34,6 +54,19 @@ packages = ["src/failpack"]
 [tool.hatch.build.targets.wheel.force-include]
 "src/failpack/data/demo-failure.jsonl" = "failpack/data/demo-failure.jsonl"
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/failpack",
+  "/tests",
+  "/fixtures",
+  "/LICENSE",
+  "/README.md",
+  "/CHANGELOG.md",
+  "/pyproject.toml",
+  "/docs/PUBLISH.md",
+  "/docs/PACKS.md",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
@@ -41,4 +74,6 @@ pythonpath = ["src"]
 [dependency-groups]
 dev = [
   "pytest>=8.0",
+  "build>=1.0",
+  "twine>=5.0",
 ]

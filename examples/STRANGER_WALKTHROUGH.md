@@ -12,10 +12,10 @@ repo checkout).
 $ pip install "git+https://github.com/JiangSkirk/failpack.git"
 Collecting git+https://github.com/JiangSkirk/failpack.git
   …
-Successfully installed failpack-1.2.0 …
+Successfully installed failpack-1.3.0 …
 
 $ failpack --version
-failpack 1.2.0
+failpack 1.3.0
 ```
 
 Editable checkout (optional, for contributing):
@@ -25,7 +25,7 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.2.0
+failpack 1.3.0
 ```
 
 > Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
@@ -38,8 +38,8 @@ From an **empty** project directory (or any repo without packs yet):
 ```bash
 $ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --skip-break
-==> 1/8  failpack --version (expect 1.2.0)
-failpack 1.2.0
+==> 1/8  failpack --version (expect 1.3.0)
+failpack 1.3.0
 
 ==> 2/8  doctor — env + .failpack/ layout
 failpack doctor
@@ -147,5 +147,5 @@ failpack lint
 - [`five-minute-demo.sh`](five-minute-demo.sh)
 - [`claude-latest-demo.md`](claude-latest-demo.md)
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
-- [`../RELEASE_NOTES_1.1.0.md`](../RELEASE_NOTES_1.1.0.md) — tagged GitHub Release `v1.1.0`
+- [`../RELEASE_NOTES_1.2.0.md`](../RELEASE_NOTES_1.2.0.md) — tagged GitHub Release `v1.2.0`
 - [`../CHANGELOG.md`](../CHANGELOG.md)

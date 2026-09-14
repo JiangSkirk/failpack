@@ -404,7 +404,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack watch --cursor-latest --id latest --force\n"
             "  failpack watch ~/.claude/projects --id latest --force\n"
             "\n"
-            "On replay FAIL, prints explain (expected/actual/hint + optional diff) and exits 1.\n"
+            "On replay FAIL, prints the same STORY block and next: tip as\n"
+            "`failpack replay` (explain · promote --suggest · re-promote) and exits 1.\n"
         ),
     )
     p_watch.add_argument(
@@ -806,7 +807,9 @@ def _handle_watch(args: argparse.Namespace) -> int:
         pattern=args.pattern,
         show_diff=not args.no_diff,
     )
-    print(f"Watched pack '{pid}' (capture → promote → replay)")
+    # Same human FAIL surface as `failpack replay`: check dump + STORY + next:
+    mark = "PASS" if report.ok else "FAIL"
+    print(f"Watched pack '{pid}' (capture → promote → replay) — {mark}")
     print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1
 

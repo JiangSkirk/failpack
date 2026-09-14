@@ -5,6 +5,31 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-09-14
+
+### Added
+
+- **`failpack watch` FAIL surface** — same **STORY** block and **`next:`** tip as
+  `failpack replay` on FAIL (`explain` · `promote --suggest` · `re-promote`).
+- README **Daily loop** section — capture → `promote --suggest` → replay → watch.
+- **[`docs/PUBLISH.md`](docs/PUBLISH.md)** — exact TestPyPI / PyPI steps
+  (`python -m build`, `twine check`, upload only with token).
+- PyPI-ready packaging: `LICENSE`, classifiers, project URLs, SPDX license,
+  trimmed sdist includes (no publish without token).
+- GitHub Release **`v1.2.0`** + [`RELEASE_NOTES_1.2.0.md`](RELEASE_NOTES_1.2.0.md).
+- Action docs / examples / `init --ci` pin **`@v1.2.0`** (keep `@main` as
+  alternative).
+
+### Changed
+
+- Version bump to **1.3.0**.
+- Watch CLI header shows `PASS` / `FAIL` after capture → promote → replay.
+
+### Notes
+
+- Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
+  in this release (packaging + docs only).
+
 ## [1.2.0] — 2026-09-14
 
 ### Added

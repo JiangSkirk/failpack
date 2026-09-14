@@ -11,7 +11,7 @@ CI_WORKFLOW_REL = Path(".github") / "workflows" / "failpack.yml"
 CI_WORKFLOW_TEMPLATE = """\
 # Written by `failpack init --ci`.
 # Prefer pinning the action to a release tag (stable CLI):
-#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.1.0
+#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.2.0
 # @main tracks the tip of the default branch (may move).
 name: FailPack regression replay
 
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.1.0
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.2.0
         with:
           # This repo: install from the checkout. Other repos: omit install-from
           # (defaults to git+https://github.com/JiangSkirk/failpack.git).
@@ -58,7 +58,7 @@ Packs live under `packs/<id>/`.
 - `failpack rename <old> <new>` — rename pack id + update meta
 - `failpack rm <id> [--force]` — delete a pack (golden needs --force)
 - `failpack export <id>` / `failpack import <pack.tgz>` — share packs
-- `failpack watch <transcript>` — capture → promote → replay (local)
+- `failpack watch <transcript>` — capture → promote → replay (local; same STORY/next: on FAIL)
 - `failpack replay <id>` / `failpack replay --all` — verify assertions in CI
 - `failpack explain <id>` — short FAIL story (+ next: promote --suggest / re-promote)
 - `failpack completion bash|zsh` — print shell completion script
