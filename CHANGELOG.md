@@ -5,6 +5,32 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] — 2026-09-14
+
+### Added
+
+- **[`docs/SUPPORT.md`](docs/SUPPORT.md)** — open support path: GitHub Issues +
+  email `8725598a@gmail.com` (owner JiangSkirk). Linked from README and
+  CONTRIBUTING. No Discord.
+
+### Changed
+
+- Version bump to **1.5.2**.
+- Docs drift: CONTRIBUTING `--version` example **1.0.0 → 1.5.2**; stranger
+  walkthrough sample output matches `demo --fast` (includes `Clean up with:`);
+  readiness score note covers **90–92** when an empty Cursor projects dir
+  earns half-credit; `five-minute-demo.sh` expects **1.5.x**.
+- Doctor Cursor tips use `--id cursor-fail` (aligned with README).
+- [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md): Support path marked done; PyPI /
+  real-user packs still honest (open).
+
+### Notes
+
+- Support path + walkthrough polish only. Action pin stays **`@v1.5.0`** (no
+  new GitHub Release required for this cut).
+- Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
+  without a token in env.
+
 ## [1.5.1] — 2026-09-14
 
 ### Added
