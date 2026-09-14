@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.5.4-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.5.5-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** is regression memory for coding-agent failures.
 
@@ -12,10 +12,18 @@ cannot quietly come back.
 
 Not a security gate. A boring, repeatable CI signal.
 
+**Landing (GitHub Pages):** [https://jiangskirk.github.io/failpack/](https://jiangskirk.github.io/failpack/)
+(static `site/` — Privacy / Terms + waitlist; not a live storefront).
+
 ## ~60-second path
 
 ```bash
+# once on PyPI (preferred when published)
+pip install failpack
+
+# works today — git fallback
 pip install "git+https://github.com/JiangSkirk/failpack.git"
+
 failpack demo --fast
 ```
 
@@ -36,10 +44,13 @@ failpack diff my-failure             # expected vs actual (no full replay)
 
 ## Install
 
-Requires Python **3.11+**. **No PyPI token / publish required** — install from GitHub:
+Requires Python **3.11+**.
 
 ```bash
-# primary (works today, no PyPI)
+# preferred once published to PyPI
+pip install failpack
+
+# git fallback (works today; no PyPI token required)
 pip install "git+https://github.com/JiangSkirk/failpack.git"
 
 # from a local checkout (editable + tests)
@@ -59,7 +70,7 @@ failpack demo --fast     # ~60s wow (recommended)
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.5.4
+failpack --version          # → failpack 1.5.5
 failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
 ```
 
@@ -394,7 +405,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/SUPPORT.md`](docs/SUPPORT.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.5.md`](RELEASE_NOTES_1.5.5.md) / [`RELEASE_NOTES_1.5.4.md`](RELEASE_NOTES_1.5.4.md) / [`RELEASE_NOTES_1.5.3.md`](RELEASE_NOTES_1.5.3.md) / [`RELEASE_NOTES_1.5.2.md`](RELEASE_NOTES_1.5.2.md) / [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 

@@ -73,7 +73,12 @@ Checkout via merchant of record (**Creem** or **Paddle**). We pick the MoR that 
 ## Quickstart
 
 ```bash
+# once on PyPI (preferred when published)
+pip install failpack
+
+# works today — git fallback
 pip install "git+https://github.com/JiangSkirk/failpack.git"
+
 failpack demo --fast
 # then: failpack init / capture / promote / replay as needed
 ```
@@ -87,12 +92,22 @@ failpack license check
 
 ---
 
+## Checkout CTA (placeholder)
+
+**Personal $19/mo** · **Team $79–149/mo** — buttons disabled until Creem KYC.
+
+- Do **not** invent live pay / checkout URLs.
+- Button labels: `Personal $19/mo — coming soon` / `Team $79–149/mo — coming soon`
+- Microcopy: Paid tiers open after Creem KYC. Join the waitlist until then.
+
+---
+
 ## Waitlist
 
 **Get Personal / Team when private packs ship.**
 
-Email: `[ your-email@company.com ]`  
-→ placeholder form action: `https://example.com/failpack-waitlist` (replace with Buttondown / Loops / Tally / Creem customer portal)
+Email: `8725598a@gmail.com` (subject: `FailPack waitlist`)  
+→ replace later with Buttondown / Loops / Tally / Creem customer portal when live
 
 Copy for the button: **Join the waitlist**
 

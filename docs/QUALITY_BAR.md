@@ -3,9 +3,9 @@
 Internal checklist. Not marketing copy. Honest gaps between “works for a
 curious stranger on GitHub” and “comfortable asking someone to pay.”
 
-Status as of **1.5.4**: product loop is real (`demo --fast` → capture →
-promote → replay → CI Action). Support path is stated. Sell-ready still needs
-the open items below.
+Status as of **1.5.5**: product loop is real (`demo --fast` → capture →
+promote → replay → CI Action). Support path is stated. Static homepage +
+Pages workflow shipped. Sell-ready still needs the open items below.
 
 ## Must-have before asking for money
 
@@ -21,7 +21,7 @@ the open items below.
 | Gap | Why it helps |
 |---|---|
 | TestPyPI dry-run of the exact release tag | Confirms long description / classifiers before real PyPI. |
-| Homepage that is not just the README | Landing copy lives in `docs/LANDING.md`; still needs a URL strangers can share. |
+| Homepage that is not just the README ✅ | **Done in 1.5.5 (workflow shipped):** static `site/` + `.github/workflows/pages.yml`. Expected URL: [https://jiangskirk.github.io/failpack/](https://jiangskirk.github.io/failpack/). If Pages is still dark, one human step remains: repo **Settings → Pages → Source: GitHub Actions**, then re-run the workflow (or push to `main`). Quickstart leads with `failpack demo --fast`. |
 | Private pack vault / team dashboard | Monetization sketch in `MONETIZATION.md` — **not** in this CLI cut. |
 | Windows CI smoke | Linux/macOS are the happy path; Windows is unverified. |
 

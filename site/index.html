@@ -11,9 +11,13 @@ h1{font-size:1.75rem;margin-bottom:.25rem}
 .sub{color:#444;margin-top:0}
 .cta{display:inline-block;background:#111;color:#fff;padding:.65rem 1rem;border-radius:8px;text-decoration:none;margin:.5rem .5rem .5rem 0}
 .cta.secondary{background:#fff;color:#111;border:1px solid #111}
+.cta.disabled{background:#e4e4e7;color:#52525b;pointer-events:none;cursor:not-allowed}
 .price{border:1px solid #ddd;border-radius:10px;padding:1rem;margin:1rem 0}
 .price strong{display:block;margin-bottom:.35rem}
+.checkout{border:1px dashed #999;border-radius:10px;padding:1.1rem 1rem;margin:1.25rem 0;background:#fafafa}
+.checkout h3{margin:.2rem 0 .5rem;font-size:1.1rem}
 .muted{color:#555;font-size:.95rem}
+.ver{color:#777;font-size:.85rem;margin:.25rem 0 0}
 footer{margin-top:3rem;font-size:.85rem;color:#666}
 code{background:#f4f4f5;padding:.1rem .3rem;border-radius:4px}
 pre{background:#f4f4f5;padding:1rem;border-radius:8px;overflow:auto}
@@ -23,14 +27,27 @@ hr{border:none;border-top:1px solid #eee;margin:2rem 0}
 <body>
 <p class="muted">FailPack · local-first regression packs for coding agents</p>
 <h1>Turn agent failures into CI that catches them next time</h1>
-<p class="sub">Capture a real coding-agent failure session, promote it to a golden pack, and replay it in GitHub Actions — so the same footgun can’t silently ship again.</p>
+<p class="sub">Install the CLI, run <code>failpack demo --fast</code>, and you have capture → promote → replay in about a minute. Replay the same golden pack in GitHub Actions so the footgun can’t silently ship again.</p>
+<p class="ver">CLI v1.5.5 · <a href="https://github.com/JiangSkirk/failpack/releases/tag/v1.5.5">GitHub Release</a> · <a href="https://github.com/JiangSkirk/failpack/blob/main/examples/STRANGER_WALKTHROUGH.md">stranger walkthrough</a></p>
 <p>
-  <a class="cta" href="#waitlist">Join the waitlist</a>
+  <a class="cta" href="#quickstart">Try the CLI</a>
+  <a class="cta secondary" href="#pricing">Pricing</a>
   <a class="cta secondary" href="https://github.com/JiangSkirk/failpack">CLI on GitHub</a>
 </p>
 
 <h2>The problem</h2>
 <p>Agent failures live in chat scrollback. Next week the same bad edit or tool path shows up again — and CI stays green. You don’t need another heavy eval platform. You need one failure → one regression that blocks merge.</p>
+
+<h2 id="quickstart">Quickstart</h2>
+<p>The ~60-second stranger path:</p>
+<pre><code># once on PyPI (preferred when published)
+pip install failpack
+
+# works today — git fallback (no PyPI token required)
+pip install "git+https://github.com/JiangSkirk/failpack.git"
+
+failpack demo --fast</code></pre>
+<p class="muted">That runs capture → promote → replay on a bundled fixture. Optional next: <code>failpack capture --claude-latest</code>, <code>promote --suggest</code>, then CI replay. Not a security gate. Not a second agent. A regression pack you own in git.</p>
 
 <h2>How it works</h2>
 <ol>
@@ -38,25 +55,32 @@ hr{border:none;border-top:1px solid #eee;margin:2rem 0}
 <li><strong>Promote</strong> fingerprints + expected error signals to golden</li>
 <li><strong>Replay</strong> locally or in CI — drift fails the build</li>
 </ol>
-<pre><code>failpack capture session.jsonl --id bad-import
-failpack promote bad-import
-failpack replay bad-import   # exit 0 / non-zero</code></pre>
-<p class="muted">Not a security gate. Not a second agent. A regression pack you own in git.</p>
 
-<h2>Pricing</h2>
+<h2 id="pricing">Pricing</h2>
 <div class="price"><strong>Open — $0</strong> Local CLI + GitHub Action · public packs</div>
 <div class="price"><strong>Personal — $19/mo</strong> Private packs · history (when sync is live)</div>
 <div class="price"><strong>Team — $79–149/mo</strong> Shared private packs · dashboard (when ready)</div>
 <p class="muted">Checkout via <strong>Creem</strong> (merchant of record; Paddle as backup). Taxes handled by the MoR.</p>
 
+<section class="checkout" id="checkout" aria-label="Checkout placeholder">
+  <h3>Checkout (placeholder)</h3>
+  <p class="muted" style="margin-top:0">Paid tiers open after Creem KYC. No live pay links yet — do not invent checkout URLs.</p>
+  <p>
+    <span class="cta disabled" aria-disabled="true">Personal $19/mo — coming soon</span>
+    <span class="cta disabled" aria-disabled="true">Team $79–149/mo — coming soon</span>
+  </p>
+  <p class="muted">Until checkout is live, join the waitlist below.</p>
+</section>
+
 <h2 id="waitlist">Waitlist</h2>
-<p>Live checkout opens after Creem KYC. Until then, email interest:</p>
+<p>Email interest for Personal / Team:</p>
 <p><a href="mailto:8725598a@gmail.com?subject=FailPack%20waitlist">8725598a@gmail.com</a> — subject: <code>FailPack waitlist</code></p>
 
 <hr/>
 <footer>
-<a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a><br/>
-© 2026 FailPack · Draft site — storefront not live yet · no fake social proof
+<a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="https://github.com/JiangSkirk/failpack#readme">README</a><br/>
+© 2026 FailPack · Draft site — storefront not live yet · no fake social proof · no fake pay links<br/>
+<span class="muted">Homepage: <a href="https://jiangskirk.github.io/failpack/">https://jiangskirk.github.io/failpack/</a></span>
 </footer>
 </body>
 </html>
