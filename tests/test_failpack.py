@@ -368,8 +368,17 @@ def test_doctor_ok_on_repo() -> None:
     assert "layout" in names
     assert "packs" in names
     packs = next(c for c in report.checks if c.name == "packs")
-    assert "4 pack" in packs.detail
-    assert "golden" in packs.detail
+    # Assert shipped fixture goldens by id — do not hardcode exact pack count.
+    # `failpack demo --fast` may leave demo-five-minute as an extra golden.
+    rows = cmd_list(REPO)
+    by_id = {r.id: r for r in rows}
+    for gid in GOLDEN_IDS:
+        assert gid in by_id, f"shipped golden missing: {gid}"
+        assert by_id[gid].status == "golden"
+    golden_n = sum(1 for r in rows if r.status == "golden")
+    assert golden_n >= len(GOLDEN_IDS)
+    assert f"{len(rows)} pack" in packs.detail
+    assert f"{golden_n} golden" in packs.detail
 
 
 def test_doctor_score_on_repo() -> None:
@@ -393,7 +402,10 @@ def test_doctor_score_on_repo() -> None:
     assert by_name["packs_dir"].ok and by_name["packs_dir"].points == 25
     assert by_name["lint"].ok and by_name["lint"].points == 20
     assert by_name["golden_count"].ok and by_name["golden_count"].points == 20
-    assert by_name["golden_count"].detail.startswith("4 golden")
+    rows = cmd_list(REPO)
+    golden_n = sum(1 for r in rows if r.status == "golden")
+    assert golden_n >= len(GOLDEN_IDS)
+    assert by_name["golden_count"].detail.startswith(f"{golden_n} golden")
     assert by_name["claude_projects"].max_points == 5
     assert by_name["cursor_projects"].max_points == 5
     text = "\n".join(report.summary_lines(with_score=True))
@@ -549,7 +561,7 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
 
 
 def test_version_is_1_3_0() -> None:
-    assert __version__ == "1.5.2"
+    assert __version__ == "1.5.3"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -1090,14 +1102,15 @@ def test_examples_docs_exist() -> None:
     assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "cursor-projects" in walk_body
     assert "~/.local/bin" in walk_body
+    assert "RELEASE_NOTES_1.5.3" in walk_body or "v1.5.3" in walk_body
     assert "RELEASE_NOTES_1.5.2" in walk_body or "v1.5.2" in walk_body
     assert "RELEASE_NOTES_1.5.0" in walk_body or "v1.5.0" in walk_body
     assert "failpack diff" in walk_body or "list --json" in walk_body or "packs --json" in walk_body
     assert "Clean up with:" in walk_body
     assert "SUPPORT.md" in walk_body
-    assert "1.5.2" in walk_body
+    assert "1.5.3" in walk_body
     contributing = (REPO / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert "1.5.2" in contributing
+    assert "1.5.3" in contributing
     assert "8725598a@gmail.com" in contributing
     assert "SUPPORT.md" in contributing
 
@@ -1106,6 +1119,7 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.5.3" in changelog
     assert "1.5.2" in changelog
     assert "1.5.1" in changelog
     assert "1.5.0" in changelog
@@ -1333,8 +1347,8 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
-    assert "1.5.2" in text
-    assert "1.5.1" in text or "1.5.0" in text
+    assert "1.5.3" in text
+    assert "1.5.2" in text or "1.5.1" in text or "1.5.0" in text
     assert "1.5.0" in text
     assert "1.4.0" in text
     assert "1.3.0" in text
@@ -1378,6 +1392,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "real-user" in quality.lower() or "real user" in quality.lower()
     assert "SUPPORT.md" in quality or "Support path" in quality
     assert "Done" in quality or "✅" in quality
+    assert "demo-five-minute" in quality or "leave" in quality.lower()
     publish = (REPO / "docs" / "PUBLISH.md").read_text(encoding="utf-8")
     assert "python -m build" in publish
     assert "twine" in publish
@@ -1387,6 +1402,11 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "demo --fast" in packs
     landing = (REPO / "docs" / "LANDING.md").read_text(encoding="utf-8")
     assert "failpack demo --fast" in landing
+    assert (REPO / "RELEASE_NOTES_1.5.3.md").is_file()
+    notes153 = (REPO / "RELEASE_NOTES_1.5.3.md").read_text(encoding="utf-8")
+    assert "1.5.3" in notes153
+    assert "@v1.5.0" in notes153
+    assert "demo-five-minute" in notes153 or "doctor" in notes153.lower()
     assert (REPO / "RELEASE_NOTES_1.5.2.md").is_file()
     notes152 = (REPO / "RELEASE_NOTES_1.5.2.md").read_text(encoding="utf-8")
     assert "1.5.2" in notes152
