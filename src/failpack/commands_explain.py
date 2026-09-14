@@ -52,6 +52,11 @@ def cmd_explain(
             if primary.actual is not None:
                 out.lines.append(f"  actual:     {primary.actual}")
         out.lines.append(f"RESULT: {'PASS' if report.ok else 'FAIL'}")
+        if not report.ok:
+            out.lines.append(
+                f"next: failpack promote --suggest {pack_id}  ·  "
+                f"failpack re-promote {pack_id}"
+            )
         return out
 
     all_report: ReplayAllReport = cmd_replay_all(root=root, show_diff=show_diff)
@@ -85,5 +90,10 @@ def cmd_explain(
     out.lines.append("")
     out.lines.append(
         f"RESULT: FAIL ({len(failed)}/{len(all_report.reports)} golden packs failed)"
+    )
+    first_id = failed[0].pack_id
+    out.lines.append(
+        f"next: failpack promote --suggest {first_id}  ·  "
+        f"failpack re-promote {first_id}"
     )
     return out

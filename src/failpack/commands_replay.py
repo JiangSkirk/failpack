@@ -200,6 +200,13 @@ class ReplayReport:
         lines.append(
             "RESULT: " + paint(result, "green" if self.ok else "red", enabled=enabled)
         )
+        if not self.ok:
+            # One-line FAIL→FIX loop tip (after RESULT so it's the last thing you see)
+            lines.append(
+                f"next: failpack explain {self.pack_id}  ·  "
+                f"failpack promote --suggest {self.pack_id}  ·  "
+                f"failpack re-promote {self.pack_id}"
+            )
         return lines
 
     def to_dict(self) -> dict[str, Any]:
@@ -259,8 +266,10 @@ class ReplayAllReport:
         )
         if failed:
             lines.append("  failed packs: " + ", ".join(failed))
-            lines.append("  tip: failpack explain <id>  # short narrative for a FAIL")
-            lines.append("  tip: failpack re-promote <id> after intentional fixes")
+            lines.append(
+                "  tip: failpack explain <id>  ·  "
+                "failpack promote --suggest <id>  ·  failpack re-promote <id>"
+            )
             # One coherent story per failed pack (keeps --all readable)
             for report in self.reports:
                 if report.ok:
@@ -273,6 +282,13 @@ class ReplayAllReport:
             + paint(result, "green" if self.ok else "red", enabled=enabled)
             + f" ({passed}/{total} golden packs passed)"
         )
+        if failed:
+            first = failed[0]
+            lines.append(
+                f"next: failpack explain {first}  ·  "
+                f"failpack promote --suggest {first}  ·  "
+                f"failpack re-promote {first}"
+            )
         return lines
 
     def to_dict(self) -> dict[str, Any]:

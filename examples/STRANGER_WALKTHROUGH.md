@@ -3,7 +3,8 @@
 Copy-paste terminal session a new user would see: install from git → demo →
 `doctor --score`. No PyPI token. No Echo / Orin / titan-agent.
 
-Assumes Python **3.11+** and a clean shell.
+Assumes Python **3.11+** and a clean shell (empty project dir — not the FailPack
+repo checkout).
 
 ## 1) Install from git
 
@@ -11,10 +12,10 @@ Assumes Python **3.11+** and a clean shell.
 $ pip install "git+https://github.com/JiangSkirk/failpack.git"
 Collecting git+https://github.com/JiangSkirk/failpack.git
   …
-Successfully installed failpack-1.1.0 …
+Successfully installed failpack-1.2.0 …
 
 $ failpack --version
-failpack 1.1.0
+failpack 1.2.0
 ```
 
 Editable checkout (optional, for contributing):
@@ -24,24 +25,33 @@ $ git clone https://github.com/JiangSkirk/failpack.git
 $ cd failpack
 $ pip install -e ".[dev]"
 $ failpack --version
-failpack 1.1.0
+failpack 1.2.0
 ```
+
+> Tip: if `failpack: command not found`, add your user scripts dir to `PATH`
+> (often `~/.local/bin` after `pip install --user`).
 
 ## 2) First wow — `failpack demo`
 
+From an **empty** project directory (or any repo without packs yet):
+
 ```bash
+$ mkdir /tmp/failpack-try && cd /tmp/failpack-try
 $ failpack demo --skip-break
-==> 1/8  failpack --version (expect 1.1.0)
-failpack 1.1.0
+==> 1/8  failpack --version (expect 1.2.0)
+failpack 1.2.0
 
 ==> 2/8  doctor — env + .failpack/ layout
 failpack doctor
   [OK] python: 3.12.3 (>= 3.11 required)
   [OK] pyyaml: importable (version 6.0.1)
   [OK] claude-projects: not found (/home/you/.claude/projects) — optional
-         tip: Install/use Claude Code, or capture a fixture / exported JSONL. Try: failpack demo
+         tip: Install/use Claude Code, or capture a fixture / exported JSONL. Try: failpack demo · or: failpack capture --cursor-latest
+  [OK] cursor-projects: not found (/home/you/.cursor/projects) — optional
+         tip: Use Cursor agent transcripts, or capture a fixture / exported JSONL. Try: failpack demo · or: failpack capture --claude-latest
   [OK] layout: .failpack/ + packs/ at …/.failpack
-  [OK] packs: 4 pack(s) (4 golden, 0 captured)
+  [OK] packs: 0 packs — capture a transcript to get started
+         tip: failpack demo   # or: failpack capture --claude-latest / --cursor-latest --id my-failure
 RESULT: OK
 
 ==> 3/8  capture bundled fixture → pack 'demo-five-minute'
@@ -73,40 +83,53 @@ Done. Demo pack left at …/.failpack/packs/demo-five-minute (status=golden).
 RESULT: OK
 ```
 
-Omit `--skip-break` to see the intentional FAIL → restore PASS loop.
+Omit `--skip-break` to see the intentional FAIL → restore PASS loop. On FAIL,
+replay prints a one-line `next:` tip:
+
+```text
+RESULT: FAIL
+next: failpack explain demo-five-minute  ·  failpack promote --suggest demo-five-minute  ·  failpack re-promote demo-five-minute
+```
 
 ## 3) Readiness score
 
 ```bash
 $ failpack doctor --score
 failpack doctor
-  [OK] python: 3.12.3 (>= 3.11 required)
-  [OK] pyyaml: importable (version 6.0.1)
+  [OK] python: …
+  [OK] pyyaml: …
   [OK] claude-projects: not found (…) — optional
+  [OK] cursor-projects: not found (…) — optional
   [OK] layout: .failpack/ + packs/ at …
-  [OK] packs: … pack(s) (… golden, … captured)
+  [OK] packs: 1 pack(s) (1 golden, 0 captured)
 
 READINESS SCORE: 90/100
 checklist:
   [OK] python: …  (+25/25)
   [OK] packs_dir: .failpack/packs/ present  (+25/25)
-  [—] claude_projects: not found (optional — fixtures / demo still work)  (+0/10)
+  [—] claude_projects: not found (optional — fixtures / demo still work)  (+0/5)
+  [—] cursor_projects: not found (optional — fixtures / demo still work)  (+0/5)
   [OK] lint: PASS (…)  (+20/20)
-  [OK] golden_count: … golden packs  (+20/20)
+  [OK] golden_count: 1 golden pack  (+20/20)
 RESULT: OK
 ```
 
-Score hits **100/100** when Claude Code sessions exist under `~/.claude/projects`
-(optional — fixtures and `failpack demo` are enough to get value).
+Score hits **100/100** when both Claude Code (`~/.claude/projects`) and Cursor
+(`~/.cursor/projects`) session trees exist with transcripts. Either agent alone
+adds **+5**; neither is required — fixtures and `failpack demo` are enough.
+CI without agent homes stays at **90/100** (does not break).
 
 ## 4) Optional next steps
 
+Use the pack the demo just created (`demo-five-minute`), not repo goldens like
+`demo-tool-denied` (those only exist in a FailPack checkout).
+
 ```bash
-# Preview smarter assertions from a captured pack
-failpack promote --suggest demo-tool-denied
+# Preview smarter assertions from the demo pack
+failpack promote --suggest demo-five-minute
 
 # Apply suggestions
-failpack promote --suggest --write my-failure
+failpack promote --suggest --write demo-five-minute
 
 # Newest Claude Code session
 failpack capture --claude-latest --id my-failure
@@ -124,5 +147,5 @@ failpack lint
 - [`five-minute-demo.sh`](five-minute-demo.sh)
 - [`claude-latest-demo.md`](claude-latest-demo.md)
 - [`cursor-latest-demo.md`](cursor-latest-demo.md)
-- [`../RELEASE_NOTES_1.0.0.md`](../RELEASE_NOTES_1.0.0.md) — tagged GitHub Release `v1.0.0`
+- [`../RELEASE_NOTES_1.1.0.md`](../RELEASE_NOTES_1.1.0.md) — tagged GitHub Release `v1.1.0`
 - [`../CHANGELOG.md`](../CHANGELOG.md)

@@ -18,7 +18,7 @@ cd "$ROOT"
 # Keep output readable in CI / logs
 export NO_COLOR="${NO_COLOR:-1}"
 
-echo "==> 1/8  failpack --version (expect 1.1.x)"
+echo "==> 1/8  failpack --version (expect 1.2.x)"
 failpack --version
 
 echo

@@ -3,9 +3,10 @@
 # Copy this file to .github/workflows/failpack.yml in a repo that vendors
 # (or syncs) golden packs under .failpack/packs/.
 #
-# One-liner style (pin to a tag or SHA in real use):
+# Prefer a release tag (stable CLI). @main is an alternative that tracks tip.
 #
-#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.0.0
+#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.1.0
+#   uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
 
 name: FailPack regression replay
 
@@ -22,7 +23,7 @@ jobs:
       # Install FailPack from GitHub and replay every golden pack.
       # Defaults: run-lint=true, step-summary=true (failpack report --github),
       # run-doctor=true.
-      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@main
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.1.0
         with:
           # Optional overrides:
           # python-version: "3.12"

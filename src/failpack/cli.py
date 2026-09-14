@@ -114,7 +114,8 @@ def build_parser() -> argparse.ArgumentParser:
             "\n"
             "Checks Python, PyYAML, ~/.claude/projects, .failpack/ layout, packs.\n"
             "--score adds a 0–100 readiness score + checklist (python, packs_dir,\n"
-            "claude_projects, lint, golden_count).\n"
+            "claude_projects, cursor_projects, lint, golden_count).\n"
+            "Agent paths are soft (missing Claude/Cursor does not break CI).\n"
             "Exit 0 always unless --strict (then non-zero when RESULT: FAIL).\n"
         ),
     )
