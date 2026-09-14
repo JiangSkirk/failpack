@@ -31,7 +31,7 @@ clear **not found** message and points here — it does not invent paths.
 ```bash
 pip install "git+https://github.com/JiangSkirk/failpack.git"
 # or from a checkout: pip install -e ".[dev]"
-failpack --version    # failpack 1.4.0+
+failpack --version    # failpack 1.5.0+
 failpack doctor --score
 failpack init         # if this repo isn't already initialized
 ```
