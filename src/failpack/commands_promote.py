@@ -6,6 +6,9 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+import yaml
+
+from failpack.assertions_schema import validate_assertions
 from failpack.diffutil import write_expected_snapshot
 from failpack.pack import (
     artifacts_dir,
@@ -96,10 +99,27 @@ def _write_expected_snapshots(pack: Path, fingerprints: list[dict[str, str]]) ->
         write_expected_snapshot(pack, rel, pack / rel)
 
 
-def cmd_promote(pack_id: str, *, root: Path | None = None) -> Path:
+def format_assertions_preview(assertions: dict[str, Any]) -> str:
+    """YAML text for dry-run / preview output."""
+    return yaml.safe_dump(assertions, sort_keys=False, default_flow_style=False)
+
+
+def cmd_promote(
+    pack_id: str,
+    *,
+    root: Path | None = None,
+    dry_run: bool = False,
+) -> Path | dict[str, Any]:
+    """Promote a pack to golden.
+
+    When *dry_run* is True, return the assertions dict that would be written
+    without touching the filesystem (no assertions.yaml, expected/, or meta).
+    """
     pack = require_pack(pack_id, root)
     meta = read_meta(pack)
-    assertions = _default_assertions(pack, meta)
+    assertions = validate_assertions(_default_assertions(pack, meta))
+    if dry_run:
+        return assertions
     write_assertions(pack, assertions)
     _write_expected_snapshots(pack, assertions.get("fingerprints") or [])
     meta["status"] = "golden"
@@ -108,7 +128,12 @@ def cmd_promote(pack_id: str, *, root: Path | None = None) -> Path:
     return pack
 
 
-def cmd_re_promote(pack_id: str, *, root: Path | None = None) -> Path:
+def cmd_re_promote(
+    pack_id: str,
+    *,
+    root: Path | None = None,
+    dry_run: bool = False,
+) -> Path | dict[str, Any]:
     """Refresh golden assertions from *current* pack artifacts.
 
     Common workflow after intentional drift: fix the failure, update artifacts
@@ -120,4 +145,4 @@ def cmd_re_promote(pack_id: str, *, root: Path | None = None) -> Path:
     if meta.get("status") not in {"golden", "captured"}:
         # Still allow refresh when status is odd but pack exists
         pass
-    return cmd_promote(pack_id, root=root)
+    return cmd_promote(pack_id, root=root, dry_run=dry_run)

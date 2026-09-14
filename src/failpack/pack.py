@@ -72,6 +72,8 @@ def write_meta(pack: Path, meta: dict[str, Any]) -> None:
 
 
 def read_assertions(pack: Path) -> dict[str, Any]:
+    from failpack.assertions_schema import validate_assertions
+
     path = pack / ASSERTIONS_NAME
     if not path.exists():
         raise FileNotFoundError(
@@ -80,10 +82,16 @@ def read_assertions(pack: Path) -> dict[str, Any]:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError(f"Invalid assertions file: {path}")
-    return data
+    try:
+        return validate_assertions(data)
+    except ValueError as exc:
+        raise ValueError(f"Invalid assertions in {path}: {exc}") from exc
 
 
 def write_assertions(pack: Path, assertions: dict[str, Any]) -> None:
+    from failpack.assertions_schema import validate_assertions
+
+    validate_assertions(assertions)
     (pack / ASSERTIONS_NAME).write_text(
         yaml.safe_dump(assertions, sort_keys=False, default_flow_style=False),
         encoding="utf-8",

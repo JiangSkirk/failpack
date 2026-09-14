@@ -8,6 +8,7 @@ from pathlib import Path
 
 from failpack import __version__
 from failpack.commands_capture import cmd_capture
+from failpack.commands_completion import cmd_completion
 from failpack.commands_demo import cmd_demo
 from failpack.commands_doctor import cmd_doctor
 from failpack.commands_export import cmd_export
@@ -15,8 +16,10 @@ from failpack.commands_import import cmd_import
 from failpack.commands_init import cmd_init
 from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
-from failpack.commands_promote import cmd_promote, cmd_re_promote
+from failpack.commands_promote import cmd_promote, cmd_re_promote, format_assertions_preview
+from failpack.commands_rename import cmd_rename
 from failpack.commands_replay import cmd_replay, cmd_replay_all
+from failpack.commands_rm import cmd_rm
 from failpack.commands_show import cmd_show
 from failpack.commands_status import cmd_status
 from failpack.commands_watch import cmd_watch
@@ -42,6 +45,10 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack replay --all\n"
             "  failpack list\n"
             "  failpack show demo-missing-import\n"
+            "  failpack promote --dry-run my-failure\n"
+            "  failpack rename old-id new-id\n"
+            "  failpack rm my-failure --force\n"
+            "  failpack completion bash\n"
             "  failpack migrate\n"
             "  failpack init --ci\n"
             "\n"
@@ -276,10 +283,17 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack promote my-failure\n"
+            "  failpack promote --dry-run my-failure\n"
+            "  failpack promote my-failure --dry-run\n"
             "  failpack re-promote my-failure   # refresh after intentional fix\n"
         ),
     )
     p_prom.add_argument("pack_id", help="Pack id under .failpack/packs/")
+    p_prom.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print assertions that would be written without writing",
+    )
     p_prom.set_defaults(func=_handle_promote)
 
     p_reprom = sub.add_parser(
@@ -289,12 +303,18 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack re-promote my-failure\n"
+            "  failpack re-promote --dry-run my-failure\n"
             "\n"
             "Use after replay FAIL when the new artifact signals are intentional:\n"
             "rewrites assertions.yaml + expected/ snapshots from current artifacts.\n"
         ),
     )
     p_reprom.add_argument("pack_id", help="Pack id under .failpack/packs/")
+    p_reprom.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print assertions that would be written without writing",
+    )
     p_reprom.set_defaults(func=_handle_re_promote)
 
     p_watch = sub.add_parser(
@@ -397,6 +417,54 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_mig.set_defaults(func=_handle_migrate)
 
+    p_rm = sub.add_parser(
+        "rm",
+        help="Delete a pack directory (refuses golden without --force)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack rm my-failure\n"
+            "  failpack rm my-failure --force   # required when status is golden\n"
+        ),
+    )
+    p_rm.add_argument("pack_id", help="Pack id under .failpack/packs/")
+    p_rm.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow deleting a golden pack",
+    )
+    p_rm.set_defaults(func=_handle_rm)
+
+    p_rename = sub.add_parser(
+        "rename",
+        help="Rename a pack id and update meta (+ assertions pack_id)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack rename old-id new-id\n"
+        ),
+    )
+    p_rename.add_argument("old_id", help="Current pack id")
+    p_rename.add_argument("new_id", help="New pack id")
+    p_rename.set_defaults(func=_handle_rename)
+
+    p_comp = sub.add_parser(
+        "completion",
+        help="Print shell completion script (bash|zsh)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  eval \"$(failpack completion bash)\"\n"
+            "  failpack completion zsh > \"${fpath[1]}/_failpack\"\n"
+        ),
+    )
+    p_comp.add_argument(
+        "shell",
+        choices=("bash", "zsh"),
+        help="Shell to generate completion for",
+    )
+    p_comp.set_defaults(func=_handle_completion)
+
     p_lic = sub.add_parser("license", help="License helpers for future Pro gating")
     lic_sub = p_lic.add_subparsers(dest="license_cmd", required=True)
     p_lic_check = lic_sub.add_parser("check", help="Validate FAILPACK_LICENSE (HMAC stub)")
@@ -492,16 +560,28 @@ def _handle_capture(args: argparse.Namespace) -> int:
 
 
 def _handle_promote(args: argparse.Namespace) -> int:
-    pack = cmd_promote(args.pack_id, root=args.root)
-    print(f"Promoted pack '{pack.name}' to golden ({pack / 'assertions.yaml'})")
+    result = cmd_promote(args.pack_id, root=args.root, dry_run=args.dry_run)
+    if args.dry_run:
+        assert isinstance(result, dict)
+        print(f"# dry-run: would write assertions.yaml for '{args.pack_id}'")
+        sys.stdout.write(format_assertions_preview(result))
+        return 0
+    assert not isinstance(result, dict)
+    print(f"Promoted pack '{result.name}' to golden ({result / 'assertions.yaml'})")
     return 0
 
 
 def _handle_re_promote(args: argparse.Namespace) -> int:
-    pack = cmd_re_promote(args.pack_id, root=args.root)
+    result = cmd_re_promote(args.pack_id, root=args.root, dry_run=args.dry_run)
+    if args.dry_run:
+        assert isinstance(result, dict)
+        print(f"# dry-run: would re-write assertions.yaml for '{args.pack_id}'")
+        sys.stdout.write(format_assertions_preview(result))
+        return 0
+    assert not isinstance(result, dict)
     print(
-        f"Re-promoted pack '{pack.name}' — refreshed assertions from current artifacts "
-        f"({pack / 'assertions.yaml'})"
+        f"Re-promoted pack '{result.name}' — refreshed assertions from current artifacts "
+        f"({result / 'assertions.yaml'})"
     )
     return 0
 
@@ -547,6 +627,23 @@ def _handle_replay(args: argparse.Namespace) -> int:
 def _handle_migrate(args: argparse.Namespace) -> int:
     report = cmd_migrate(root=args.root)
     print("\n".join(report.summary_lines()))
+    return 0
+
+
+def _handle_rm(args: argparse.Namespace) -> int:
+    pack = cmd_rm(args.pack_id, root=args.root, force=args.force)
+    print(f"Removed pack '{args.pack_id}' ({pack})")
+    return 0
+
+
+def _handle_rename(args: argparse.Namespace) -> int:
+    pack = cmd_rename(args.old_id, args.new_id, root=args.root)
+    print(f"Renamed pack '{args.old_id}' → '{args.new_id}' ({pack})")
+    return 0
+
+
+def _handle_completion(args: argparse.Namespace) -> int:
+    sys.stdout.write(cmd_completion(args.shell))
     return 0
 
 

@@ -442,8 +442,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_0_7_0() -> None:
-    assert __version__ == "0.7.0"
+def test_version_is_0_8_0() -> None:
+    assert __version__ == "0.8.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -963,12 +963,189 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack replay" in text
     assert "failpack demo" in text
     assert "failpack show" in text
-    assert "0.7.0" in text
+    assert "0.8.0" in text
+    assert "Pack lifecycle" in text
     assert "tool_denied_contains" in text
     assert "bash_output_contains" in text
     assert "badge.svg" in text
     assert "Stet" in text
     assert "AgentClash" in text
+
+
+def test_rm_refuses_golden_without_force(workspace: Path) -> None:
+    from failpack.commands_rm import cmd_rm
+
+    _capture_and_promote(workspace, pack_id="rm-golden")
+    with pytest.raises(ValueError, match="golden"):
+        cmd_rm("rm-golden", root=workspace)
+    assert (workspace / ".failpack" / "packs" / "rm-golden").is_dir()
+
+    cmd_rm("rm-golden", root=workspace, force=True)
+    assert not (workspace / ".failpack" / "packs" / "rm-golden").exists()
+
+
+def test_rm_deletes_captured_without_force(workspace: Path) -> None:
+    from failpack.commands_rm import cmd_rm
+
+    cmd_capture(FIXTURE, pack_id="rm-captured", root=workspace)
+    cmd_rm("rm-captured", root=workspace)
+    assert not (workspace / ".failpack" / "packs" / "rm-captured").exists()
+
+
+def test_rename_updates_meta_and_assertions(workspace: Path) -> None:
+    from failpack.commands_rename import cmd_rename
+    from failpack.pack import read_assertions, read_meta
+
+    _capture_and_promote(workspace, pack_id="old-name")
+    dest = cmd_rename("old-name", "new-name", root=workspace)
+    assert dest.name == "new-name"
+    assert not (workspace / ".failpack" / "packs" / "old-name").exists()
+    meta = read_meta(dest)
+    assert meta["id"] == "new-name"
+    assertions = read_assertions(dest)
+    assert assertions["pack_id"] == "new-name"
+    assert cmd_replay("new-name", root=workspace).ok
+
+
+def test_rename_collision_and_invalid(workspace: Path) -> None:
+    from failpack.commands_rename import cmd_rename
+
+    _capture_and_promote(workspace, pack_id="keep-a")
+    _capture_and_promote(workspace, pack_id="keep-b")
+    with pytest.raises(FileExistsError):
+        cmd_rename("keep-a", "keep-b", root=workspace)
+    with pytest.raises(ValueError, match="Invalid pack id"):
+        cmd_rename("keep-a", "../evil", root=workspace)
+    with pytest.raises(ValueError, match="same"):
+        cmd_rename("keep-a", "keep-a", root=workspace)
+
+
+def test_promote_dry_run_does_not_write(workspace: Path) -> None:
+    cmd_capture(FIXTURE, pack_id="dry-me", root=workspace)
+    pack = workspace / ".failpack" / "packs" / "dry-me"
+    result = cmd_promote("dry-me", root=workspace, dry_run=True)
+    assert isinstance(result, dict)
+    assert result["pack_id"] == "dry-me"
+    assert "exit_code" in result
+    assert "fingerprints" in result
+    assert not (pack / "assertions.yaml").exists()
+    assert read_meta(pack)["status"] == "captured"
+    assert not (pack / "expected").exists()
+
+
+def test_cli_promote_dry_run(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    cmd_capture(FIXTURE, pack_id="cli-dry", root=workspace)
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "promote", "--dry-run", "cli-dry"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "dry-run" in out
+    assert "pack_id: cli-dry" in out
+    assert "exit_code:" in out
+    assert not (workspace / ".failpack" / "packs" / "cli-dry" / "assertions.yaml").exists()
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "promote", "cli-dry", "--dry-run"])
+    assert exc.value.code == 0
+
+
+def test_assertion_schema_rejects_unknown_kind(workspace: Path) -> None:
+    from failpack.assertions_schema import validate_assertions
+    from failpack.pack import read_assertions
+
+    _capture_and_promote(workspace, pack_id="schema-bad")
+    pack = workspace / ".failpack" / "packs" / "schema-bad"
+    path = pack / "assertions.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data["regex_match"] = [{"path": "artifacts/error.txt", "pattern": ".*"}]
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    with pytest.raises(ValueError, match="Unknown assertion kind"):
+        read_assertions(pack)
+    with pytest.raises(ValueError, match="Unknown assertion kind"):
+        validate_assertions(data)
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "replay", "schema-bad"])
+    assert exc.value.code == 2
+
+
+def test_assertion_schema_rejects_missing_fields() -> None:
+    from failpack.assertions_schema import validate_assertions
+
+    with pytest.raises(ValueError, match="missing required field"):
+        validate_assertions(
+            {
+                "version": 1,
+                "fingerprints": [{"path": "artifacts/error.txt"}],
+            }
+        )
+    with pytest.raises(ValueError, match="missing required field"):
+        validate_assertions(
+            {
+                "version": 1,
+                "substrings": [{"path": "artifacts/error.txt"}],
+            }
+        )
+    with pytest.raises(ValueError, match="missing required field"):
+        validate_assertions(
+            {
+                "version": 1,
+                "tool_denied_contains": [{}],
+            }
+        )
+
+
+def test_completion_bash_and_zsh_smoke() -> None:
+    from failpack.commands_completion import cmd_completion
+
+    bash = cmd_completion("bash")
+    assert "complete -F _failpack failpack" in bash
+    assert "promote" in bash
+    assert "rename" in bash
+    zsh = cmd_completion("zsh")
+    assert "#compdef failpack" in zsh
+    assert "_failpack" in zsh
+    with pytest.raises(ValueError, match="Unsupported shell"):
+        cmd_completion("fish")
+
+
+def test_cli_completion_and_lifecycle_help(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["completion", "bash"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "complete -F _failpack" in out
+
+    parser = build_parser()
+    names: set[str] = set()
+    promote_help = None
+    for action in parser._subparsers._group_actions:  # noqa: SLF001
+        names.update(action.choices.keys())
+        if "promote" in action.choices:
+            promote_help = action.choices["promote"].format_help()
+    assert {"rm", "rename", "completion"} <= names
+    assert promote_help is not None
+    assert "--dry-run" in promote_help
+
+
+def test_cli_rm_rename(
+    workspace: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _capture_and_promote(workspace, pack_id="life-a")
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "rm", "life-a"])
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "golden" in err
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "rename", "life-a", "life-b"])
+    assert exc.value.code == 0
+    assert (workspace / ".failpack" / "packs" / "life-b").is_dir()
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "rm", "life-b", "--force"])
+    assert exc.value.code == 0
+    assert not (workspace / ".failpack" / "packs" / "life-b").exists()
 
 
 def test_tool_denied_and_bash_output_helpers() -> None:

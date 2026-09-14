@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import tarfile
 import tempfile
@@ -12,19 +11,9 @@ from pathlib import Path
 
 from failpack.commands_export import MANIFEST_NAME, detect_archive_format
 from failpack.commands_init import cmd_init
+from failpack.ids import validate_pack_id as _validate_pack_id
 from failpack.pack import read_meta, write_meta
 from failpack.paths import META_NAME, find_root, pack_dir, packs_dir
-
-_SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
-
-
-def _validate_pack_id(pack_id: str) -> str:
-    if not _SAFE_ID.match(pack_id):
-        raise ValueError(
-            f"Invalid pack id {pack_id!r}. Use letters, digits, '.', '_', '-' "
-            "(max 128 chars)."
-        )
-    return pack_id
 
 
 def _within(directory: Path, target: Path) -> bool:
