@@ -26,20 +26,29 @@ from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
 from failpack.commands_promote import cmd_promote, cmd_re_promote
 from failpack.commands_replay import cmd_replay, cmd_replay_all
+from failpack.commands_show import cmd_show
 from failpack.commands_status import cmd_status
 from failpack.commands_watch import cmd_watch
 from failpack.diffutil import short_unified_diff
+from failpack.events import (
+    bash_output_contains,
+    denied_tool_names,
+    tool_denied_contains,
+)
 from failpack.pack import glob_fingerprint, read_meta, sha256_file
 from failpack.schema import CURRENT_SCHEMA_VERSION
+from failpack.transcript import load_jsonl
 
 REPO = Path(__file__).resolve().parents[1]
 FIXTURE = REPO / "fixtures" / "claude-code-failure.jsonl"
 FIXTURE_WRONG_CMD = REPO / "fixtures" / "claude-code-wrong-test-cmd.jsonl"
 FIXTURE_PERM = REPO / "fixtures" / "claude-code-permission-denied.jsonl"
+FIXTURE_TOOL_DENIED = REPO / "fixtures" / "claude-code-tool-denied.jsonl"
 DEMO_ID = "demo-missing-import"
 DEMO_WRONG_CMD = "demo-wrong-test-cmd"
 DEMO_PERM = "demo-permission-denied"
-GOLDEN_IDS = (DEMO_ID, DEMO_WRONG_CMD, DEMO_PERM)
+DEMO_TOOL_DENIED = "demo-tool-denied"
+GOLDEN_IDS = (DEMO_ID, DEMO_WRONG_CMD, DEMO_PERM, DEMO_TOOL_DENIED)
 
 
 @pytest.fixture
@@ -189,12 +198,14 @@ def test_list_and_status_for_shipped_packs() -> None:
     assert DEMO_ID in ids
     assert DEMO_WRONG_CMD in ids
     assert DEMO_PERM in ids
+    assert DEMO_TOOL_DENIED in ids
     by_id = {r.id: r for r in rows}
     assert by_id[DEMO_ID].status == "golden"
     assert by_id[DEMO_ID].exit_code == 1
     assert by_id[DEMO_ID].promoted_at
     assert by_id[DEMO_WRONG_CMD].exit_code == 4
     assert by_id[DEMO_PERM].exit_code == 13
+    assert by_id[DEMO_TOOL_DENIED].exit_code == 126
 
     status = cmd_status(DEMO_ID, root=REPO)
     lines = "\n".join(status.summary_lines())
@@ -202,6 +213,18 @@ def test_list_and_status_for_shipped_packs() -> None:
     assert "schema:" in lines
     assert "min_events" in lines
     assert "glob_fingerprint" in lines
+
+    show = cmd_show(DEMO_TOOL_DENIED, root=REPO)
+    show_lines = "\n".join(show.summary_lines(color=False))
+    assert "failpack show: demo-tool-denied" in show_lines
+    assert "tool_denied_contains:Bash" in show_lines
+    assert "bash_output_contains:" in show_lines
+    assert "artifacts/error.txt" in show_lines
+    assert show.meta.get("promoted_at")
+    payload = json.loads(show.to_json())
+    assert payload["pack_id"] == DEMO_TOOL_DENIED
+    assert payload["exit_code"] == 126
+    assert "artifacts/digest.json" in payload["artifacts"]
 
 
 def test_list_status_in_workspace(workspace: Path) -> None:
@@ -339,7 +362,7 @@ def test_doctor_ok_on_repo() -> None:
     assert "layout" in names
     assert "packs" in names
     packs = next(c for c in report.checks if c.name == "packs")
-    assert "3 pack" in packs.detail
+    assert "4 pack" in packs.detail
     assert "golden" in packs.detail
 
 
@@ -371,6 +394,7 @@ def test_replay_all_shipped_goldens() -> None:
     assert DEMO_ID in ids
     assert DEMO_WRONG_CMD in ids
     assert DEMO_PERM in ids
+    assert DEMO_TOOL_DENIED in ids
     assert all(r.ok for r in report.reports)
 
 
@@ -418,8 +442,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_0_6_0() -> None:
-    assert __version__ == "0.6.0"
+def test_version_is_0_7_0() -> None:
+    assert __version__ == "0.7.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -540,6 +564,10 @@ def test_init_ci_writes_workflow(tmp_path: Path) -> None:
     text = workflow.read_text(encoding="utf-8")
     assert "failpack-replay" in text
     assert "JiangSkirk/failpack" in text
+    tip = (fp / "README.md").read_text(encoding="utf-8")
+    assert "failpack demo" in tip
+    assert "--claude-latest" in tip
+    assert "failpack show" in tip
     # Idempotent: second init --ci does not clobber
     workflow.write_text("# custom\n", encoding="utf-8")
     _, again = cmd_init(tmp_path, ci=True)
@@ -771,7 +799,7 @@ def test_examples_docs_exist() -> None:
     demo = REPO / "examples" / "five-minute-demo.sh"
     assert demo.is_file()
     text = demo.read_text(encoding="utf-8")
-    assert "0.6" in text or "failpack demo" in text
+    assert "0.7" in text or "failpack demo" in text
     claude_doc = REPO / "examples" / "claude-latest-demo.md"
     assert claude_doc.is_file()
     body = claude_doc.read_text(encoding="utf-8")
@@ -783,9 +811,12 @@ def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "0.7.0" in changelog
     assert "0.6.0" in changelog
     assert "0.5.0" in changelog
     assert "0.4.0" in changelog
+    assert "tool_denied_contains" in changelog
+    assert "failpack show" in changelog
 
 
 def test_doctor_claude_projects_missing_home(tmp_path: Path, workspace: Path) -> None:
@@ -907,12 +938,14 @@ def test_help_mentions_demo_export_import() -> None:
     assert "demo" in help_text
     assert "export" in help_text
     assert "import" in help_text
+    assert "show" in help_text
     names = set()
     for action in parser._subparsers._group_actions:  # noqa: SLF001
         names.update(action.choices.keys())
     assert "demo" in names
     assert "export" in names
     assert "import" in names
+    assert "show" in names
 
 
 def test_bundled_demo_fixture_loads() -> None:
@@ -929,6 +962,96 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack promote" in text
     assert "failpack replay" in text
     assert "failpack demo" in text
-    assert "0.6.0" in text
+    assert "failpack show" in text
+    assert "0.7.0" in text
+    assert "tool_denied_contains" in text
+    assert "bash_output_contains" in text
+    assert "badge.svg" in text
     assert "Stet" in text
     assert "AgentClash" in text
+
+
+def test_tool_denied_and_bash_output_helpers() -> None:
+    events = load_jsonl(FIXTURE_TOOL_DENIED)
+    assert denied_tool_names(events) == ["Bash"]
+    assert tool_denied_contains(events, "Bash")
+    assert tool_denied_contains(events, "ash")  # substring
+    assert not tool_denied_contains(events, "Write")
+    assert bash_output_contains(events, "pyproject.toml", match="any")
+    assert bash_output_contains(events, "Tool use denied: Bash", match="last")
+    assert not bash_output_contains(events, "pyproject.toml", match="last")
+
+
+def test_tool_denied_fixture_promotes_and_replays(workspace: Path) -> None:
+    _capture_and_promote(workspace, FIXTURE_TOOL_DENIED, DEMO_TOOL_DENIED)
+    pack = workspace / ".failpack" / "packs" / DEMO_TOOL_DENIED
+    assertions_path = pack / "assertions.yaml"
+    data = yaml.safe_load(assertions_path.read_text(encoding="utf-8"))
+    assert data["exit_code"] == 126
+    data["tool_denied_contains"] = [{"contains": "Bash"}]
+    data["bash_output_contains"] = [
+        {"contains": "Tool use denied: Bash", "match": "last"},
+        {"contains": "pyproject.toml", "match": "any"},
+    ]
+    assertions_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    report = cmd_replay(DEMO_TOOL_DENIED, root=workspace)
+    assert report.ok, "\n".join(report.summary_lines())
+    assert any(c.name.startswith("tool_denied_contains:") and c.ok for c in report.checks)
+    assert any(c.name.startswith("bash_output_contains:") and c.ok for c in report.checks)
+
+    # Break tool_denied assert
+    data["tool_denied_contains"] = [{"contains": "NotARealTool"}]
+    assertions_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    bad = cmd_replay(DEMO_TOOL_DENIED, root=workspace)
+    assert not bad.ok
+    assert any(
+        c.name.startswith("tool_denied_contains:") and not c.ok for c in bad.checks
+    )
+
+
+def test_bash_output_contains_fail_modes(workspace: Path) -> None:
+    _capture_and_promote(workspace, FIXTURE_TOOL_DENIED, DEMO_TOOL_DENIED)
+    pack = workspace / ".failpack" / "packs" / DEMO_TOOL_DENIED
+    assertions_path = pack / "assertions.yaml"
+    data = yaml.safe_load(assertions_path.read_text(encoding="utf-8"))
+    data["bash_output_contains"] = [{"contains": "THIS_NEVER_APPEARS", "match": "any"}]
+    assertions_path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    report = cmd_replay(DEMO_TOOL_DENIED, root=workspace)
+    assert not report.ok
+    assert any(
+        c.name.startswith("bash_output_contains:") and not c.ok for c in report.checks
+    )
+
+
+def test_cli_show_json(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["show", DEMO_TOOL_DENIED, "--json"])
+    assert exc.value.code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["pack_id"] == DEMO_TOOL_DENIED
+    assert payload["status"] == "golden"
+    assert payload["promoted_at"]
+    assert payload["artifacts"]
+
+
+def test_action_readme_documents_inputs() -> None:
+    readme = REPO / ".github" / "actions" / "failpack-replay" / "README.md"
+    assert readme.is_file()
+    text = readme.read_text(encoding="utf-8")
+    assert "install-from" in text
+    assert "run-doctor" in text
+    assert "json" in text
+    assert "Inputs" in text
+    assert "Outputs" in text or "exit" in text.lower()
+
+
+def test_shipped_demo_tool_denied_has_new_asserts() -> None:
+    assertions = yaml.safe_load(
+        (REPO / ".failpack" / "packs" / DEMO_TOOL_DENIED / "assertions.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert assertions["tool_denied_contains"]
+    assert assertions["bash_output_contains"]
+    report = cmd_replay(DEMO_TOOL_DENIED, root=REPO)
+    assert report.ok, "\n".join(report.summary_lines())

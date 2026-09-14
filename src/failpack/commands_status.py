@@ -40,6 +40,24 @@ class StatusReport:
         return lines
 
 
+def _normalize_contains_entries(raw: Any) -> list[dict[str, Any]]:
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [{"contains": raw}]
+    if isinstance(raw, dict):
+        return [raw]
+    if isinstance(raw, list):
+        out: list[dict[str, Any]] = []
+        for item in raw:
+            if isinstance(item, str):
+                out.append({"contains": item})
+            elif isinstance(item, dict):
+                out.append(item)
+        return out
+    return []
+
+
 def _summarize_assertions(assertions: dict[str, Any]) -> list[str]:
     items: list[str] = []
     if assertions.get("exit_code") is not None:
@@ -59,6 +77,14 @@ def _summarize_assertions(assertions: dict[str, Any]) -> list[str]:
     subs = assertions.get("substrings") or []
     if subs:
         items.append(f"{len(subs)} substring(s)")
+    for entry in _normalize_contains_entries(assertions.get("tool_denied_contains")):
+        needle = entry.get("contains") or "?"
+        items.append(f"tool_denied_contains:{needle}")
+    for entry in _normalize_contains_entries(assertions.get("bash_output_contains")):
+        needle = entry.get("contains") or "?"
+        match = entry.get("match") or entry.get("which") or "any"
+        suffix = f" ({match})" if match != "any" else ""
+        items.append(f"bash_output_contains:{needle}{suffix}")
     if not items:
         items.append("(empty assertions.yaml)")
     return items

@@ -10,8 +10,9 @@ from typing import Any
 from failpack.color import paint, use_color
 from failpack.commands_list import list_packs
 from failpack.diffutil import fingerprint_diff
+from failpack.events import bash_output_contains, load_pack_events, tool_denied_contains
 from failpack.pack import artifacts_dir, glob_fingerprint, read_assertions, read_meta, sha256_file
-from failpack.paths import failpack_dir, require_pack
+from failpack.paths import TRANSCRIPT_NAME, failpack_dir, require_pack
 
 
 @dataclass
@@ -50,11 +51,34 @@ def _hint_for_check(name: str, *, missing: bool = False, kind: str = "") -> str:
         return "written files drifted — inspect artifacts/files/"
     if name.startswith("substring:"):
         return "re-promote after intentional change"
+    if name.startswith("tool_denied_contains:"):
+        return "denied tool signal missing — inspect transcript.jsonl tool_result events"
+    if name.startswith("bash_output_contains:"):
+        return "Bash output signal missing — inspect Bash tool_result events in transcript"
     if name == "assertions":
         return "run failpack promote <id> to write assertions.yaml"
     if kind == "file_count":
         return "written file set drifted — inspect artifacts/files/"
     return "inspect pack artifacts and re-promote if the change is intentional"
+
+
+def _normalize_contains_entries(raw: Any) -> list[dict[str, Any]]:
+    """Normalize list/dict/string assertion entries into ``{contains, ...}`` dicts."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [{"contains": raw}]
+    if isinstance(raw, dict):
+        return [raw]
+    if isinstance(raw, list):
+        out: list[dict[str, Any]] = []
+        for item in raw:
+            if isinstance(item, str):
+                out.append({"contains": item})
+            elif isinstance(item, dict):
+                out.append(item)
+        return out
+    return []
 
 
 @dataclass
@@ -364,6 +388,106 @@ def cmd_replay(
                 hint=None if ok else _hint_for_check(name),
             )
         )
+
+    # Transcript-based asserts (optional; older packs omit these)
+    tool_denied_entries = _normalize_contains_entries(
+        assertions.get("tool_denied_contains")
+    )
+    bash_output_entries = _normalize_contains_entries(
+        assertions.get("bash_output_contains")
+    )
+    events: list[dict[str, Any]] | None = None
+    if tool_denied_entries or bash_output_entries:
+        transcript = pack / TRANSCRIPT_NAME
+        if not transcript.is_file():
+            for entry in tool_denied_entries:
+                needle = str(entry.get("contains") or "")
+                report.checks.append(
+                    CheckResult(
+                        f"tool_denied_contains:{needle}",
+                        False,
+                        "transcript.jsonl missing",
+                        expected=f"denied tool name contains {needle!r}",
+                        actual="(missing transcript)",
+                        hint=_hint_for_check(f"tool_denied_contains:{needle}", missing=True),
+                    )
+                )
+            for entry in bash_output_entries:
+                needle = str(entry.get("contains") or "")
+                report.checks.append(
+                    CheckResult(
+                        f"bash_output_contains:{needle}",
+                        False,
+                        "transcript.jsonl missing",
+                        expected=f"Bash output contains {needle!r}",
+                        actual="(missing transcript)",
+                        hint=_hint_for_check(f"bash_output_contains:{needle}", missing=True),
+                    )
+                )
+        else:
+            events = load_pack_events(transcript)
+
+    if events is not None:
+        for entry in tool_denied_entries:
+            needle = str(entry.get("contains") or "")
+            name = f"tool_denied_contains:{needle}"
+            if not needle:
+                report.checks.append(
+                    CheckResult(
+                        name,
+                        False,
+                        "incomplete tool_denied_contains entry (needs contains)",
+                        hint="fix assertions.yaml tool_denied_contains",
+                    )
+                )
+                continue
+            ok = tool_denied_contains(events, needle)
+            detail = "found" if ok else f"no denied tool name contains {needle!r}"
+            report.checks.append(
+                CheckResult(
+                    name,
+                    ok,
+                    detail,
+                    expected=f"denied tool name contains {needle!r}" if not ok else None,
+                    actual="not found" if not ok else None,
+                    hint=None if ok else _hint_for_check(name),
+                )
+            )
+
+        for entry in bash_output_entries:
+            needle = str(entry.get("contains") or "")
+            match_mode = str(entry.get("match") or entry.get("which") or "any")
+            name = f"bash_output_contains:{needle}"
+            if not needle:
+                report.checks.append(
+                    CheckResult(
+                        name,
+                        False,
+                        "incomplete bash_output_contains entry (needs contains)",
+                        hint="fix assertions.yaml bash_output_contains",
+                    )
+                )
+                continue
+            ok = bash_output_contains(events, needle, match=match_mode)
+            detail = (
+                f"found ({match_mode})"
+                if ok
+                else f"Bash output ({match_mode}) missing {needle!r}"
+            )
+            report.checks.append(
+                CheckResult(
+                    name,
+                    ok,
+                    detail,
+                    expected=(
+                        f"Bash output ({match_mode}) contains {needle!r}"
+                        if not ok
+                        else None
+                    ),
+                    actual="not found" if not ok else None,
+                    hint=None if ok else _hint_for_check(name),
+                )
+            )
 
     if not report.checks:
         report.checks.append(

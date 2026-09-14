@@ -17,6 +17,7 @@ from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
 from failpack.commands_promote import cmd_promote, cmd_re_promote
 from failpack.commands_replay import cmd_replay, cmd_replay_all
+from failpack.commands_show import cmd_show
 from failpack.commands_status import cmd_status
 from failpack.commands_watch import cmd_watch
 from failpack.license import cmd_license_check
@@ -40,6 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack import my-failure.tgz\n"
             "  failpack replay --all\n"
             "  failpack list\n"
+            "  failpack show demo-missing-import\n"
             "  failpack migrate\n"
             "  failpack init --ci\n"
             "\n"
@@ -190,6 +192,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_status.add_argument("pack_id", help="Pack id under .failpack/packs/")
     p_status.set_defaults(func=_handle_status)
+
+    p_show = sub.add_parser(
+        "show",
+        help="Pretty inspect one pack (status, asserts, artifacts)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  failpack show demo-missing-import\n"
+            "  failpack show demo-tool-denied --json\n"
+            "\n"
+            "Prints status, exit, promoted_at, assertion summary, and artifact list.\n"
+        ),
+    )
+    p_show.add_argument("pack_id", help="Pack id under .failpack/packs/")
+    p_show.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human summary lines",
+    )
+    p_show.set_defaults(func=_handle_show)
 
     p_cap = sub.add_parser(
         "capture",
@@ -442,6 +464,15 @@ def _handle_list(args: argparse.Namespace) -> int:
 def _handle_status(args: argparse.Namespace) -> int:
     report = cmd_status(args.pack_id, root=args.root)
     print("\n".join(report.summary_lines()))
+    return 0
+
+
+def _handle_show(args: argparse.Namespace) -> int:
+    report = cmd_show(args.pack_id, root=args.root)
+    if args.json:
+        sys.stdout.write(report.to_json())
+    else:
+        print("\n".join(report.summary_lines()))
     return 0
 
 

@@ -1,0 +1,7 @@
+{
+  "error_message": "Tool use denied: Bash\nNetwork install blocked by policy (exit_code=126)",
+  "event_count": 8,
+  "exit_code": 126,
+  "status": "failed",
+  "written_files": []
+}
