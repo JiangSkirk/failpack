@@ -889,6 +889,9 @@ def test_cli_capture_claude_latest_honors_HOME(
     assert exc.value.code == 0
     out = capsys.readouterr().out
     assert "via-cli" in out
+    assert "Claude one-shot" in out
+    assert "using:" in out
+    assert "Next: failpack promote --suggest via-cli" in out
     meta = read_meta(workspace / ".failpack" / "packs" / "via-cli")
     assert meta["exit_code"] == 4
 
@@ -896,7 +899,7 @@ def test_cli_capture_claude_latest_honors_HOME(
 def test_claude_latest_missing_projects_dir(tmp_path: Path) -> None:
     empty_home = tmp_path / "empty-home"
     empty_home.mkdir()
-    with pytest.raises(FileNotFoundError, match=r"\.claude/projects"):
+    with pytest.raises(FileNotFoundError, match=r"demo --fast|one-shot|\.claude/projects"):
         find_claude_latest(home=empty_home)
 
 
@@ -989,11 +992,15 @@ def test_examples_docs_exist() -> None:
     assert demo.is_file()
     text = demo.read_text(encoding="utf-8")
     assert "failpack demo" in text
+    assert "--fast" in text
+    assert "~60s" in text or "60s" in text
     claude_doc = REPO / "examples" / "claude-latest-demo.md"
     assert claude_doc.is_file()
     body = claude_doc.read_text(encoding="utf-8")
     assert "--claude-latest" in body
     assert "re-promote" in body
+    assert "Claude one-shot" in body or "one-shot" in body
+    assert "promote --suggest" in body
     cursor_doc = REPO / "examples" / "cursor-latest-demo.md"
     assert cursor_doc.is_file()
     cursor_body = cursor_doc.read_text(encoding="utf-8")
@@ -1004,11 +1011,12 @@ def test_examples_docs_exist() -> None:
     walk_body = walk.read_text(encoding="utf-8")
     assert "git+https://github.com/JiangSkirk/failpack.git" in walk_body
     assert "doctor --score" in walk_body
-    assert "failpack demo" in walk_body
+    assert "failpack demo --fast" in walk_body
+    assert "~60s" in walk_body or "60s" in walk_body
     assert "demo-five-minute" in walk_body
-    assert "promote --suggest demo-five-minute" in walk_body
+    assert "promote --suggest" in walk_body
+    assert "Claude one-shot" in walk_body or "claude-latest" in walk_body
     assert "cursor-projects" in walk_body
-    assert "next: failpack explain" in walk_body
     assert "~/.local/bin" in walk_body
     assert "RELEASE_NOTES_1.2.0" in walk_body
 
@@ -1026,6 +1034,9 @@ def test_changelog_and_contributing_exist() -> None:
     assert "next:" in changelog
     assert "Daily loop" in changelog or "watch" in changelog.lower()
     assert "PUBLISH.md" in changelog
+    assert "--fast" in changelog
+    assert "60s" in changelog or "~60" in changelog
+    assert "one-shot" in changelog.lower() or "claude-latest" in changelog
     assert "--suggest" in changelog
     assert "--cursor-latest" in changelog
     assert "0.9.0" in changelog
@@ -1045,7 +1056,8 @@ def test_doctor_claude_projects_missing_home(tmp_path: Path, workspace: Path) ->
     claude = next(c for c in report.checks if c.name == "claude-projects")
     assert claude.ok
     assert "not found" in claude.detail
-    assert claude.fix and "demo" in claude.fix
+    assert claude.fix and "demo --fast" in claude.fix
+    assert "--claude-latest" in (claude.fix or "")
     cursor = next(c for c in report.checks if c.name == "cursor-projects")
     assert cursor.ok
     assert "not found" in cursor.detail
@@ -1060,6 +1072,7 @@ def test_doctor_claude_projects_with_sessions(tmp_path: Path, workspace: Path) -
     assert claude.ok
     assert "session" in claude.detail
     assert claude.fix and "--claude-latest" in claude.fix
+    assert "One-shot" in (claude.fix or "") or "one-shot" in (claude.fix or "").lower()
 
 
 def test_doctor_cursor_projects_with_sessions(tmp_path: Path, workspace: Path) -> None:
@@ -1142,6 +1155,30 @@ def test_demo_end_to_end(workspace: Path) -> None:
     assert cmd_replay("demo-test", root=workspace).ok
 
 
+def test_demo_fast_compact_path(workspace: Path) -> None:
+    from failpack.commands_demo import cmd_demo
+
+    report = cmd_demo(root=workspace, pack_id="demo-fast", keep=True, fast=True)
+    assert report.ok, "\n".join(report.summary_lines())
+    assert report.fast
+    text = "\n".join(report.summary_lines())
+    assert "~60s" in text
+    assert "1/3" in text
+    assert "2/8" not in text  # full doctor path skipped
+    assert "RESULT: OK" in text
+    assert (workspace / ".failpack" / "packs" / "demo-fast" / "assertions.yaml").is_file()
+
+
+def test_cli_demo_fast(workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "demo", "--fast", "--id", "cli-fast", "--no-keep"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "demo --fast" in out
+    assert "~60s" in out
+    assert "RESULT: OK" in out
+
+
 def test_demo_no_keep(workspace: Path) -> None:
     from failpack.commands_demo import cmd_demo
 
@@ -1211,7 +1248,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "1.0.0" in text
     assert "doctor --score" in text
     assert 'git+https://github.com/JiangSkirk/failpack.git' in text
-    assert "Five-minute path" in text
+    assert "~60-second path" in text or "demo --fast" in text
     assert "Daily loop" in text
     assert "Pack lifecycle" in text
     assert "failpack report" in text
@@ -1223,6 +1260,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "--suggest" in text
     assert "--cursor-latest" in text
     assert "cursor_projects" in text
+    assert "Claude one-shot" in text or "one-shot" in text.lower()
     assert "STRANGER_WALKTHROUGH" in text
     assert "badge.svg" in text
     assert "@v1.2.0" in text

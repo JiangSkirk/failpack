@@ -9,18 +9,20 @@ Your agent failed once. Make CI remember — capture the bad run, promote golden
 
 This is **not** a security gate. It is regression memory for agent sessions.
 
-## Five-minute path
+## ~60-second path
 
 ```bash
 pip install "git+https://github.com/JiangSkirk/failpack.git"
-failpack demo
+failpack demo --fast
 ```
 
-That is the whole product loop: **install → demo**. Optional next steps after the wow:
+That is the whole product loop: **install → ~60s wow**. Prefer `--fast` for
+strangers; plain `failpack demo` adds doctor + intentional break/restore.
+Optional next steps after the wow:
 
 ```bash
 failpack doctor --score              # 0–100 readiness + checklist
-failpack capture --claude-latest --id my-failure
+failpack capture --claude-latest --id my-failure   # Claude Code one-shot
 failpack capture --cursor-latest --id cursor-fail
 failpack promote --suggest my-failure
 failpack promote --suggest --write my-failure
@@ -46,7 +48,8 @@ uv pip install -e ".[dev]"
 First command after install:
 
 ```bash
-failpack demo
+failpack demo --fast     # ~60s wow (recommended)
+# failpack demo          # full path with break/restore
 ```
 
 Then confirm readiness:
@@ -80,6 +83,7 @@ failpack watch fixtures/claude-code-failure.jsonl --id my-failure --force
 | Command | What it does |
 |---|---|
 | `failpack demo` | **One-command wow:** capture → promote → replay (+ intentional break) |
+| `failpack demo --fast` | **~60s stranger path:** capture → promote → replay only |
 | `failpack init` | Create `.failpack/` layout (tip README → `demo` / `--claude-latest` / `--cursor-latest`) |
 | `failpack init --ci` | Also write a starter workflow pinned to `@v1.2.0` (or use `@main`) |
 | `failpack doctor` | Check env + Claude/Cursor projects + workspace; print actionable fixes |
@@ -87,7 +91,7 @@ failpack watch fixtures/claude-code-failure.jsonl --id my-failure --force
 | `failpack list` | Clean aligned table of packs (id, status, exit, promoted_at) |
 | `failpack show <id>` | **Pretty inspect** status, exit, asserts, artifacts (`--json`) |
 | `failpack status <id>` | Show meta + assertion summary for one pack |
-| `failpack capture --claude-latest` | **Magic path:** newest Claude Code session under `~/.claude/projects` |
+| `failpack capture --claude-latest` | **Claude one-shot:** newest Claude Code session under `~/.claude/projects` |
 | `failpack capture --cursor-latest` | **Magic path:** newest Cursor agent transcript under `~/.cursor/projects` |
 | `failpack capture <transcript.jsonl\|dir>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
 | `failpack promote <id>` | Mark golden + write smarter `assertions.yaml` (+ expected snapshots) |
@@ -129,7 +133,7 @@ What each shipped pack teaches — full table in [`docs/PACKS.md`](docs/PACKS.md
 ```bash
 # from this repo
 pip install -e ".[dev]"
-failpack demo                         # first command after install
+failpack demo --fast                  # ~60s first command after install
 failpack doctor --score
 failpack list
 failpack show demo-tool-denied        # pretty inspect (+ --json)

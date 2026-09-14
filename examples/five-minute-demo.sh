@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# FailPack 5-minute demo: doctor → capture → promote → replay → break → restore
+# FailPack wow demo: prefer the ~60s path, or the full break/restore path.
 #
 # Prefer the built-in command (works after git install):
 #   pip install "git+https://github.com/JiangSkirk/failpack.git"
-#   failpack demo
+#   failpack demo --fast          # ~60s stranger path (recommended)
+#   failpack demo                 # full path with doctor + break/restore
 #
 # Or run this script from the FailPack repo root:
 #   ./examples/five-minute-demo.sh
@@ -18,9 +19,16 @@ cd "$ROOT"
 # Keep output readable in CI / logs
 export NO_COLOR="${NO_COLOR:-1}"
 
-echo "==> 1/8  failpack --version (expect 1.2.x)"
+MODE="${1:---fast}"
+
+echo "==> failpack --version (expect 1.3.x)"
 failpack --version
 
 echo
-echo "==> delegating remaining steps to: failpack demo"
-failpack demo --id demo-five-minute
+if [[ "$MODE" == "--full" ]]; then
+  echo "==> delegating to: failpack demo  (full path)"
+  failpack demo --id demo-five-minute
+else
+  echo "==> delegating to: failpack demo --fast  (~60s)"
+  failpack demo --fast --id demo-five-minute
+fi

@@ -133,16 +133,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_demo = sub.add_parser(
         "demo",
-        help="One-command five-minute wow path (capture → promote → replay)",
+        help="One-command ~60s wow path (capture → promote → replay)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  failpack demo\n"
+            "  failpack demo --fast          # ~60s stranger path (recommended)\n"
+            "  failpack demo                 # full path incl. break/restore\n"
             "  failpack demo --no-keep\n"
             "  failpack demo --skip-break\n"
             "\n"
             'Zero-setup: pip install "git+https://github.com/JiangSkirk/failpack.git"\n'
-            "             && failpack demo\n"
+            "             && failpack demo --fast\n"
             "Uses a bundled fixture (same path as examples/five-minute-demo.sh).\n"
         ),
     )
@@ -161,6 +162,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--skip-break",
         action="store_true",
         help="Skip the intentional artifact break / restore steps",
+    )
+    p_demo.add_argument(
+        "--fast",
+        action="store_true",
+        help="~60s stranger path: capture → promote → replay only (implies --skip-break)",
     )
     p_demo.set_defaults(func=_handle_demo)
 
@@ -267,11 +273,11 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack capture --stdin < session.jsonl\n"
             "  failpack capture 'fixtures/*.jsonl' --id from-glob\n"
             "\n"
-            "magic: --claude-latest finds the newest *.jsonl under\n"
-            "~/.claude/projects (Claude Code). --cursor-latest finds the newest\n"
-            "agent transcript under ~/.cursor/projects/*/agent-transcripts\n"
-            "(best-effort). A bare directory argument also picks the newest\n"
-            "*.jsonl underneath.\n"
+            "magic: --claude-latest is the Claude Code one-shot — newest *.jsonl\n"
+            "under ~/.claude/projects. On success it prints the session path +\n"
+            "Next: promote --suggest. --cursor-latest finds the newest agent\n"
+            "transcript under ~/.cursor/projects/*/agent-transcripts (best-effort).\n"
+            "A bare directory argument also picks the newest *.jsonl underneath.\n"
         ),
     )
     p_cap.add_argument(
@@ -289,7 +295,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument(
         "--claude-latest",
         action="store_true",
-        help="Discover newest Claude Code session under ~/.claude/projects",
+        help="Claude Code one-shot: newest session under ~/.claude/projects",
     )
     p_cap.add_argument(
         "--cursor-latest",
@@ -672,6 +678,7 @@ def _handle_demo(args: argparse.Namespace) -> int:
         pack_id=args.pack_id or DEMO_PACK_ID,
         keep=not args.no_keep,
         skip_break=args.skip_break,
+        fast=bool(getattr(args, "fast", False)),
     )
     print("\n".join(report.summary_lines()))
     return 0 if report.ok else 1
@@ -730,7 +737,32 @@ def _handle_capture(args: argparse.Namespace) -> int:
         stdin=args.stdin,
         pattern=args.pattern,
     )
+    if args.claude_latest:
+        from failpack.pack import read_meta
+
+        meta = read_meta(pack)
+        raw = str(meta.get("source_transcript") or "")
+        # meta stores "<claude-latest:/abs/path>"
+        shown = raw.split(":", 1)[-1].rstrip(">") if raw.startswith("<claude-latest:") else raw
+        print("Claude one-shot: newest session under ~/.claude/projects")
+        if shown:
+            print(f"  using: {shown}")
+    elif args.cursor_latest:
+        from failpack.pack import read_meta
+
+        meta = read_meta(pack)
+        raw = str(meta.get("source_transcript") or "")
+        shown = raw.split(":", 1)[-1].rstrip(">") if raw.startswith("<cursor-latest:") else raw
+        print("Cursor one-shot: newest agent transcript under ~/.cursor/projects")
+        if shown:
+            print(f"  using: {shown}")
     print(f"Captured pack '{pack.name}' → {pack}")
+    if args.claude_latest or args.cursor_latest:
+        print(
+            f"Next: failpack promote --suggest {pack.name}  ·  "
+            f"failpack promote --suggest --write {pack.name}  ·  "
+            f"failpack replay {pack.name}"
+        )
     return 0
 
 

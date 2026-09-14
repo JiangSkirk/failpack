@@ -1,4 +1,4 @@
-# Demo: `failpack capture --claude-latest`
+# Demo: `failpack capture --claude-latest` (Claude Code one-shot)
 
 Magic path: discover the newest Claude Code session under `~/.claude/projects`
 and turn it into a FailPack golden pack — no manual path hunting.
@@ -6,12 +6,36 @@ and turn it into a FailPack golden pack — no manual path hunting.
 > Tests and CI use a **fake HOME**. This doc shows the real-machine flow.
 > FailPack never requires a live agent install in the repo.
 
+## One-shot loop (~a minute after a real failure)
+
+```bash
+failpack capture --claude-latest --id my-failure
+failpack promote --suggest --write my-failure
+failpack replay my-failure
+```
+
+On capture success you should see:
+
+```text
+Claude one-shot: newest session under ~/.claude/projects
+  using: /home/you/.claude/projects/…/0192ef01-….jsonl
+Captured pack 'my-failure' → …/.failpack/packs/my-failure
+Next: failpack promote --suggest my-failure  ·  failpack promote --suggest --write my-failure  ·  failpack replay my-failure
+```
+
+No Claude sessions yet? Doctor and the error message both tip:
+
+```bash
+failpack demo --fast          # ~60s wow without an agent
+# or finish a Claude Code run, then retry --claude-latest
+```
+
 ## Prerequisites
 
 ```bash
 pip install -e ".[dev]"
-failpack --version    # failpack 0.5.0
-failpack doctor
+failpack --version    # failpack 1.3.0+
+failpack doctor       # tips --claude-latest when sessions exist
 failpack init         # if this repo isn't already initialized
 ```
 
@@ -30,7 +54,10 @@ Claude Code sessions usually look like:
 
 ```bash
 $ failpack capture --claude-latest --id claude-latest-demo --force
+Claude one-shot: newest session under ~/.claude/projects
+  using: /…/.claude/projects/…/0192ef01-….jsonl
 Captured pack 'claude-latest-demo' → /…/.failpack/packs/claude-latest-demo
+Next: failpack promote --suggest claude-latest-demo  ·  …
 ```
 
 Equivalent explicit forms (same newest-jsonl idea):
@@ -55,7 +82,8 @@ demo-wrong-test-cmd    golden    4     2026-09-14T…
 ### 3) Promote → replay
 
 ```bash
-$ failpack promote claude-latest-demo
+$ failpack promote --suggest --write claude-latest-demo
+$ failpack promote claude-latest-demo   # or plain promote
 Promoted pack 'claude-latest-demo' to golden (…/assertions.yaml)
 
 $ failpack replay claude-latest-demo
@@ -78,6 +106,7 @@ failpack replay: claude-latest-demo
          actual:   …
          hint:     artifact drifted — inspect artifacts/error.txt
 RESULT: FAIL
+next: failpack explain claude-latest-demo  ·  failpack promote --suggest claude-latest-demo  ·  failpack re-promote claude-latest-demo
 
 $ failpack re-promote claude-latest-demo
 Re-promoted pack 'claude-latest-demo' — refreshed assertions from current artifacts (…/assertions.yaml)
@@ -97,7 +126,7 @@ failpack replay --all
            …
 SUMMARY: 2 passed, 1 failed (3 golden packs)
   failed packs: claude-latest-demo
-  tip: failpack re-promote <id> after intentional fixes
+  tip: failpack explain <id>  ·  failpack promote --suggest <id>  ·  failpack re-promote <id>
 RESULT: FAIL (2/3 golden packs passed)
 ```
 
@@ -129,4 +158,5 @@ cp fixtures/claude-code-failure.jsonl "$HOME/.claude/projects/demo/session.jsonl
 failpack capture --claude-latest --id from-fake-home --force
 ```
 
-See also: [`five-minute-demo.sh`](five-minute-demo.sh), [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+See also: [`STRANGER_WALKTHROUGH.md`](STRANGER_WALKTHROUGH.md),
+[`five-minute-demo.sh`](five-minute-demo.sh), [`CONTRIBUTING.md`](../CONTRIBUTING.md).

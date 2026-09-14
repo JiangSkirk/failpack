@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`failpack demo --fast`** — ~60s stranger wow path (capture → promote →
+  replay only; skips doctor dump / break / migrate). README + stranger
+  walkthrough lead with this.
+- **Claude Code one-shot UX** — `capture --claude-latest` prints session path +
+  `Next: promote --suggest …`; clearer not-found messages; doctor tip points at
+  the one-shot (and `demo --fast`).
 - **`failpack watch` FAIL surface** — same **STORY** block and **`next:`** tip as
   `failpack replay` on FAIL (`explain` · `promote --suggest` · `re-promote`).
 - README **Daily loop** section — capture → `promote --suggest` → replay → watch.
@@ -24,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Version bump to **1.3.0**.
 - Watch CLI header shows `PASS` / `FAIL` after capture → promote → replay.
+- Docs timing: “Five-minute path” → “~60-second path”; Claude demo + stranger
+  walkthrough polished for one-shot capture.
 
 ### Notes
 

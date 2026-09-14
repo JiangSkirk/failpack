@@ -112,7 +112,7 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
     """Report whether ``~/.claude/projects`` exists and how many sessions.
 
     Missing Claude Code is **not** a failure — FailPack works with fixtures.
-    When sessions are found, tip ``capture --claude-latest``.
+    When sessions are found, tip the Claude one-shot ``capture --claude-latest``.
     """
     projects = claude_projects_dir(home=home)
     if not projects.is_dir():
@@ -121,8 +121,8 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
             True,
             f"not found ({projects}) — optional",
             fix=(
-                "Install/use Claude Code, or capture a fixture / exported JSONL. "
-                "Try: failpack demo · or: failpack capture --cursor-latest"
+                "After a Claude Code run: failpack capture --claude-latest --id my-failure  "
+                "·  or ~60s wow: failpack demo --fast  ·  or: failpack capture --cursor-latest"
             ),
         )
 
@@ -133,7 +133,10 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
             "claude-projects",
             True,
             f"found at {projects} (0 session *.jsonl)",
-            fix="After a Claude Code run, try: failpack capture --claude-latest --id my-failure",
+            fix=(
+                "One-shot after your next Claude Code failure: "
+                "failpack capture --claude-latest --id my-failure"
+            ),
         )
 
     newest = max(sessions, key=lambda p: p.stat().st_mtime)
@@ -142,8 +145,8 @@ def _check_claude_projects(*, home: Path | None = None) -> DoctorCheck:
         True,
         f"found at {projects} ({n} session{'s' if n != 1 else ''})",
         fix=(
-            f"Newest: {newest.name} — try: "
-            "failpack capture --claude-latest --id my-failure"
+            f"One-shot: failpack capture --claude-latest --id my-failure  "
+            f"(newest: {newest.name})"
         ),
     )
 
@@ -242,8 +245,8 @@ def _check_layout(root: Path | None) -> list[DoctorCheck]:
                 True,
                 "0 packs — capture a transcript to get started",
                 fix=(
-                    "failpack demo   # or: failpack capture --claude-latest / "
-                    "--cursor-latest --id my-failure"
+                    "failpack demo --fast   # ~60s wow  ·  or: "
+                    "failpack capture --claude-latest / --cursor-latest --id my-failure"
                 ),
             )
         )
@@ -333,9 +336,9 @@ def _score_claude_projects(*, home: Path | None = None) -> DoctorCheck:
         "claude_projects",
         claude_projects_dir(home=home),
         empty_fix=(
-            "After a Claude Code run: failpack capture --claude-latest --id my-failure"
+            "One-shot: failpack capture --claude-latest --id my-failure"
         ),
-        missing_fix="Install Claude Code, or skip and use: failpack demo",
+        missing_fix="Install Claude Code, or skip: failpack demo --fast",
     )
 
 

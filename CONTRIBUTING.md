@@ -17,7 +17,8 @@ Requires Python **3.11+**.
 pip install -e ".[dev]"
 failpack --version   # → failpack 1.0.0
 failpack doctor --score
-failpack demo --skip-break   # optional local wow path
+failpack demo --fast         # ~60s stranger wow path (recommended)
+failpack demo --skip-break   # optional full local wow path without break
 pytest -q
 ```
 

@@ -66,11 +66,23 @@ def find_claude_latest(*, home: Path | None = None) -> Path:
     projects = claude_projects_dir(home=home)
     if not projects.is_dir():
         raise FileNotFoundError(
-            f"Claude Code projects directory not found: {projects}. "
-            "Install/use Claude Code, or pass a transcript path / --stdin. "
-            "Tip: sessions usually live under ~/.claude/projects/<project>/*.jsonl."
+            f"Claude Code projects directory not found: {projects}.\n"
+            "One-shot after a Claude Code run needs ~/.claude/projects/<project>/*.jsonl.\n"
+            "  • Run a Claude Code session that fails, then:\n"
+            "      failpack capture --claude-latest --id my-failure\n"
+            "  • Or skip agents and try the ~60s wow path:\n"
+            "      failpack demo --fast\n"
+            "  • Or pass a transcript path / --stdin."
         )
-    return find_newest_jsonl(projects)
+    try:
+        return find_newest_jsonl(projects)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            f"No Claude Code *.jsonl sessions under {projects}.\n"
+            "One-shot: finish a Claude Code run, then:\n"
+            "  failpack capture --claude-latest --id my-failure\n"
+            "Or: failpack demo --fast"
+        ) from exc
 
 
 def _cursor_jsonl_candidates(projects: Path) -> list[Path]:

@@ -12,7 +12,7 @@ failure class — copy the fixture, capture your own session, or start from
 | 2 | **`demo-wrong-test-cmd`** | Wrong pytest target (missing file) | `fixtures/claude-code-wrong-test-cmd.jsonl` | exit `4` |
 | 3 | **`demo-permission-denied`** | Wrote under `/etc/…` → `PermissionError` | `fixtures/claude-code-permission-denied.jsonl` | exit `13` + permission signal |
 | 4 | **`demo-tool-denied`** | Bash network install denied by policy | `fixtures/claude-code-tool-denied.jsonl` | exit `126` + `tool_denied_contains` / `bash_output_contains` |
-| 5 | **`demo-five-minute`** *(via `failpack demo`)* | Same class as #1 — **wow path**, not a permanent ship | bundled `failpack/data/demo-failure.jsonl` | teaches capture → promote → replay → intentional FAIL |
+| 5 | **`demo-five-minute`** *(via `failpack demo [--fast]`)* | Same class as #1 — **~60s wow path**, not a permanent ship | bundled `failpack/data/demo-failure.jsonl` | teaches capture → promote → replay (+ optional intentional FAIL) |
 
 Replay everything shipped:
 
