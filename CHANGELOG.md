@@ -5,6 +5,24 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] — 2026-09-14
+
+### Added
+
+- GitHub Release **`v1.5.0`** + [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md).
+- Action docs / examples / `init --ci` pin **`@v1.5.0`** (keep `@main` as
+  alternative).
+
+### Changed
+
+- Version bump to **1.5.1**.
+
+### Notes
+
+- Docs-only pin bump after `v1.5.0` tagged. No features.
+- Zero coupling to Echo / Orin / titan-agent. No monetization. No PyPI upload
+  without a token in env.
+
 ## [1.5.0] — 2026-09-14
 
 ### Added

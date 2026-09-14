@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.5.0-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.5.1-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** is regression memory for coding-agent failures.
 
@@ -59,7 +59,7 @@ failpack demo --fast     # ~60s wow (recommended)
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.5.0
+failpack --version          # → failpack 1.5.1
 failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
 ```
 
@@ -89,7 +89,7 @@ failpack watch fixtures/claude-code-failure.jsonl --id my-failure --force
 | `failpack demo` | **One-command wow:** capture → promote → replay (+ intentional break) |
 | `failpack demo --fast` | **~60s stranger path:** capture → promote → replay only |
 | `failpack init` | Create `.failpack/` layout (tip README → `demo` / `--claude-latest` / `--cursor-latest`) |
-| `failpack init --ci` | Also write a starter workflow pinned to `@v1.4.0` (or use `@main`) |
+| `failpack init --ci` | Also write a starter workflow pinned to `@v1.5.0` (or use `@main`) |
 | `failpack doctor` | Check env + Claude/Cursor projects + workspace; print actionable fixes |
 | `failpack doctor --score` | **Readiness 0–100** + checklist (python / packs / claude / cursor / lint / goldens) |
 | `failpack list` | Clean aligned table of packs (id, status, exit, promoted_at) |
@@ -270,8 +270,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Prefer @v1.4.0 (release pin). @main is a valid alternative.
-      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.4.0
+      # Prefer @v1.5.0 (release pin). @main is a valid alternative.
+      - uses: JiangSkirk/failpack/.github/actions/failpack-replay@v1.5.0
         with:
           # defaults (both on):
           # run-lint: "true"        # failpack lint before replay
@@ -280,7 +280,7 @@ jobs:
           # json: "false"
 ```
 
-Or generate a starter workflow (pins `@v1.4.0`; swap to `@main` if you prefer tip):
+Or generate a starter workflow (pins `@v1.5.0`; swap to `@main` if you prefer tip):
 
 ```bash
 failpack init --ci   # writes .github/workflows/failpack.yml
@@ -388,7 +388,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md) / [`RELEASE_NOTES_1.2.0.md`](RELEASE_NOTES_1.2.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`docs/PUBLISH.md`](docs/PUBLISH.md) (TestPyPI/PyPI steps), [`docs/QUALITY_BAR.md`](docs/QUALITY_BAR.md) (sell-ready checklist), [`RELEASE_NOTES_1.5.0.md`](RELEASE_NOTES_1.5.0.md) / [`RELEASE_NOTES_1.4.0.md`](RELEASE_NOTES_1.4.0.md) / [`RELEASE_NOTES_1.3.0.md`](RELEASE_NOTES_1.3.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 
