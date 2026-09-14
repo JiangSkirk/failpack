@@ -13,6 +13,15 @@ from failpack.paths import ARTIFACTS_DIR, PACKS_DIR, TRANSCRIPT_NAME, failpack_d
 from failpack.schema import CURRENT_SCHEMA_VERSION, SCHEMA_VERSION_KEY
 from failpack.transcript import load_jsonl, slug_from_summary, summarize_events, write_artifacts
 
+# Claude Code default session tree (relative to $HOME).
+CLAUDE_PROJECTS_REL = Path(".claude") / "projects"
+
+
+def claude_projects_dir(*, home: Path | None = None) -> Path:
+    """Return ``<home>/.claude/projects`` (expandable via ``Path.home()``)."""
+    base = home if home is not None else Path.home()
+    return (base / CLAUDE_PROJECTS_REL).expanduser()
+
 
 def find_newest_jsonl(project_dir: Path) -> Path:
     """Find the newest ``*.jsonl`` under a directory tree.
@@ -30,26 +39,47 @@ def find_newest_jsonl(project_dir: Path) -> Path:
         raise FileNotFoundError(
             f"No *.jsonl transcripts under {project_dir}. "
             "Pass a directory that contains session JSONL "
-            "(Claude Code tip: ~/.claude/projects), a fixture path, or --stdin."
+            "(Claude Code tip: ~/.claude/projects), use --claude-latest, "
+            "a fixture path, or --stdin."
         )
     return max(candidates, key=lambda p: p.stat().st_mtime)
+
+
+def find_claude_latest(*, home: Path | None = None) -> Path:
+    """Discover the newest Claude Code session JSONL under ``~/.claude/projects``.
+
+    ``home`` overrides ``Path.home()`` so tests can use a fake HOME fixture
+    without touching a real ``~/.claude`` tree.
+    """
+    projects = claude_projects_dir(home=home)
+    if not projects.is_dir():
+        raise FileNotFoundError(
+            f"Claude Code projects directory not found: {projects}. "
+            "Install/use Claude Code, or pass a transcript path / --stdin. "
+            "Tip: sessions usually live under ~/.claude/projects/<project>/*.jsonl."
+        )
+    return find_newest_jsonl(projects)
 
 
 def resolve_transcript_path(
     transcript: Path | None,
     *,
     from_claude_project: Path | None = None,
+    claude_latest: bool = False,
     stdin: bool = False,
     pattern: str | None = None,
+    home: Path | None = None,
 ) -> Path:
-    """Resolve the transcript file from path, glob, Claude project helper, or stdin.
+    """Resolve the transcript file from path, glob, Claude helpers, or stdin.
 
-    Exactly one input mode must be chosen (path/glob, --from-claude-project, or --stdin).
+    Exactly one input mode must be chosen (path/glob, --from-claude-project,
+    --claude-latest, or --stdin).
     """
     modes = sum(
         [
             transcript is not None and str(transcript) != "-",
             from_claude_project is not None,
+            claude_latest,
             stdin or (transcript is not None and str(transcript) == "-"),
             pattern is not None,
         ]
@@ -59,13 +89,17 @@ def resolve_transcript_path(
         modes -= 1
     if modes == 0:
         raise ValueError(
-            "Provide a transcript path, --from-claude-project <path>, "
+            "Provide a transcript path, --claude-latest, --from-claude-project <path>, "
             "--stdin, or a glob pattern."
         )
     if modes > 1:
         raise ValueError(
-            "Use only one of: transcript path / glob, --from-claude-project, or --stdin."
+            "Use only one of: transcript path / glob, --claude-latest, "
+            "--from-claude-project, or --stdin."
         )
+
+    if claude_latest:
+        return find_claude_latest(home=home)
 
     if from_claude_project is not None:
         return find_newest_jsonl(from_claude_project)
@@ -113,8 +147,8 @@ def resolve_transcript_path(
         raise FileNotFoundError(
             f"Transcript not found: {path}. "
             "Pass a .jsonl file, a directory containing *.jsonl "
-            "(e.g. a Claude Code projects folder), --from-claude-project, "
-            "--stdin, or a glob."
+            "(e.g. a Claude Code projects folder), --claude-latest, "
+            "--from-claude-project, --stdin, or a glob."
         )
     return path.resolve()
 
@@ -126,14 +160,18 @@ def cmd_capture(
     root: Path | None = None,
     force: bool = False,
     from_claude_project: Path | None = None,
+    claude_latest: bool = False,
     stdin: bool = False,
     pattern: str | None = None,
+    home: Path | None = None,
 ) -> Path:
     source = resolve_transcript_path(
         transcript,
         from_claude_project=from_claude_project,
+        claude_latest=claude_latest,
         stdin=stdin,
         pattern=pattern,
+        home=home,
     )
     cleanup_tmp = stdin or (transcript is not None and str(transcript) == "-")
 
@@ -163,6 +201,8 @@ def cmd_capture(
         source_label: str
         if cleanup_tmp:
             source_label = "<stdin>"
+        elif claude_latest:
+            source_label = f"<claude-latest:{source}>"
         elif from_claude_project is not None:
             source_label = str(source)
         else:
