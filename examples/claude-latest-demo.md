@@ -101,18 +101,20 @@ SUMMARY: 2 passed, 1 failed (3 golden packs)
 RESULT: FAIL (2/3 golden packs passed)
 ```
 
-## Cursor-ish paths (manual only)
+## Cursor paths
 
-FailPack does **not** auto-discover Cursor agent sessions.
+Prefer the magic path (best-effort discovery):
 
-If you export a Cursor / IDE agent transcript as JSONL (or find a project-local
-copy under something like `~/.cursor/projects/` or a workspace `.cursor/` folder),
-pass it explicitly:
+```bash
+failpack capture --cursor-latest --id cursor-fail
+```
+
+See [`cursor-latest-demo.md`](cursor-latest-demo.md) for layout notes and the
+fake-HOME testing rule. Manual path still works:
 
 ```bash
 failpack capture ~/exports/cursor-agent-fail.jsonl --id cursor-fail
-# or newest under a directory you control:
-failpack capture ~/exports/agent-jsonl/ --id cursor-fail
+failpack capture ~/.cursor/projects --id cursor-fail
 ```
 
 No Cursor API coupling — same JSONL → pack path as Claude fixtures.

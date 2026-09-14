@@ -51,7 +51,7 @@ _failpack() {{
       local packs
       packs="$(failpack list 2>/dev/null | awk 'NR>2 {{print $1}}')"
       if [[ "${{cmd}}" == "promote" || "${{cmd}}" == "re-promote" ]]; then
-        COMPREPLY=( $(compgen -W "--dry-run ${{packs}}" -- "${{cur}}") )
+        COMPREPLY=( $(compgen -W "--dry-run --suggest --write ${{packs}}" -- "${{cur}}") )
       elif [[ "${{cmd}}" == "rm" ]]; then
         COMPREPLY=( $(compgen -W "--force ${{packs}}" -- "${{cur}}") )
       elif [[ "${{cmd}}" == "replay" ]]; then
@@ -68,7 +68,7 @@ _failpack() {{
       return 0
       ;;
     capture|watch)
-      COMPREPLY=( $(compgen -W "--id --force --claude-latest --from-claude-project --stdin --glob --help" -- "${{cur}}") )
+      COMPREPLY=( $(compgen -W "--id --force --claude-latest --cursor-latest --from-claude-project --stdin --glob --help" -- "${{cur}}") )
       return 0
       ;;
     import)
@@ -139,9 +139,18 @@ _failpack() {{
         promote)
           _arguments \\
             '--dry-run[print assertions without writing]' \\
+            '--suggest[recommend assertions from transcript]' \\
+            '--write[apply suggested assertions]' \\
             '1:pack id:_pack_ids'
           ;;
-        re-promote|status|rename)
+        re-promote)
+          _arguments \\
+            '--dry-run[print assertions without writing]' \\
+            '--suggest[recommend assertions from transcript]' \\
+            '--write[apply suggested assertions]' \\
+            '1:pack id:_pack_ids'
+          ;;
+        status|rename)
           _arguments '1:pack id:_pack_ids'
           ;;
         show)
@@ -180,6 +189,7 @@ _failpack() {{
             '--id[pack id]:id:' \\
             '--force[overwrite]' \\
             '--claude-latest[newest Claude session]' \\
+            '--cursor-latest[newest Cursor agent transcript]' \\
             '--from-claude-project[Claude projects dir]:path:_files -/' \\
             '--stdin[read stdin]' \\
             '--glob[glob pattern]:pattern:' \\

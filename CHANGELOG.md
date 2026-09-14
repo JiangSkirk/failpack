@@ -5,6 +5,34 @@ All notable changes to FailPack are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-09-14
+
+### Added
+
+- **`failpack promote --suggest <id>`** — analyze pack artifacts + transcript
+  events (ticks) and print recommended assertions (`exit_code`, fingerprint
+  paths, `tool_denied_contains`, `bash_output_contains`). Add **`--write`** to
+  apply. Plain `promote` / `re-promote` use the same smarter builder.
+- **`failpack capture --cursor-latest`** — best-effort discovery of the newest
+  Cursor agent `*.jsonl` under `~/.cursor/projects/*/agent-transcripts`
+  (tests MUST use a fake HOME). Clear not-found message +
+  [`examples/cursor-latest-demo.md`](examples/cursor-latest-demo.md).
+- **[`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md)** —
+  copy-paste install → demo → `doctor --score` session for new users.
+- GitHub Release **`v1.0.0`** from [`RELEASE_NOTES_1.0.0.md`](RELEASE_NOTES_1.0.0.md).
+
+### Changed
+
+- Version bump to **1.1.0**.
+- Promote writes smarter transcript-derived asserts when signals exist
+  (still backward compatible for packs that omit them).
+- Completion / help / README mention `--suggest`, `--write`, `--cursor-latest`.
+
+### Notes
+
+- Zero coupling to Echo / Orin / titan-agent. No monetization / PyPI publish.
+- Cursor discovery is best-effort; layouts evolve — see the example doc.
+
 ## [1.0.0] — 2026-09-14
 
 ### Added

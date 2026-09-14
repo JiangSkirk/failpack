@@ -18,7 +18,12 @@ from failpack.commands_init import cmd_init
 from failpack.commands_lint import cmd_lint
 from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
-from failpack.commands_promote import cmd_promote, cmd_re_promote, format_assertions_preview
+from failpack.commands_promote import (
+    cmd_promote,
+    cmd_re_promote,
+    format_assertions_preview,
+    format_suggest_preview,
+)
 from failpack.commands_rename import cmd_rename
 from failpack.commands_replay import cmd_replay, cmd_replay_all
 from failpack.commands_report import cmd_report
@@ -42,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack demo\n"
             "  failpack doctor --score\n"
             "  failpack capture --claude-latest --id my-failure\n"
+            "  failpack capture --cursor-latest --id my-failure\n"
             "  failpack promote my-failure && failpack replay my-failure\n"
             "  failpack export my-failure -o my-failure.tgz\n"
             "  failpack import my-failure.tgz\n"
@@ -52,6 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack explain my-failure\n"
             "  failpack lint\n"
             "  failpack promote --dry-run my-failure\n"
+            "  failpack promote --suggest my-failure\n"
             "  failpack rename old-id new-id\n"
             "  failpack rm my-failure --force\n"
             "  failpack completion bash\n"
@@ -252,6 +259,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack capture --claude-latest --id my-failure\n"
+            "  failpack capture --cursor-latest --id my-failure\n"
             "  failpack capture fixtures/claude-code-failure.jsonl --id my-failure\n"
             "  failpack capture ~/.claude/projects --id my-failure\n"
             "  failpack capture --from-claude-project ~/.claude/projects\n"
@@ -259,8 +267,10 @@ def build_parser() -> argparse.ArgumentParser:
             "  failpack capture 'fixtures/*.jsonl' --id from-glob\n"
             "\n"
             "magic: --claude-latest finds the newest *.jsonl under\n"
-            "~/.claude/projects (Claude Code). A bare directory argument also\n"
-            "picks the newest *.jsonl underneath.\n"
+            "~/.claude/projects (Claude Code). --cursor-latest finds the newest\n"
+            "agent transcript under ~/.cursor/projects/*/agent-transcripts\n"
+            "(best-effort). A bare directory argument also picks the newest\n"
+            "*.jsonl underneath.\n"
         ),
     )
     p_cap.add_argument(
@@ -279,6 +289,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--claude-latest",
         action="store_true",
         help="Discover newest Claude Code session under ~/.claude/projects",
+    )
+    p_cap.add_argument(
+        "--cursor-latest",
+        action="store_true",
+        help=(
+            "Discover newest Cursor agent transcript under "
+            "~/.cursor/projects/*/agent-transcripts (best-effort)"
+        ),
     )
     p_cap.add_argument(
         "--from-claude-project",
@@ -308,9 +326,16 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack promote my-failure\n"
+            "  failpack promote --suggest my-failure\n"
+            "  failpack promote --suggest --write my-failure\n"
             "  failpack promote --dry-run my-failure\n"
             "  failpack promote my-failure --dry-run\n"
             "  failpack re-promote my-failure   # refresh after intentional fix\n"
+            "\n"
+            "--suggest analyzes artifacts + transcript ticks and prints\n"
+            "recommended assertions (exit_code, fingerprint paths,\n"
+            "tool_denied_contains, bash_output_contains). Add --write to apply.\n"
+            "Plain promote writes the same smarter suggestions.\n"
         ),
     )
     p_prom.add_argument("pack_id", help="Pack id under .failpack/packs/")
@@ -318,6 +343,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Print assertions that would be written without writing",
+    )
+    p_prom.add_argument(
+        "--suggest",
+        action="store_true",
+        help=(
+            "Analyze transcript/artifacts and print recommended assertions "
+            "(preview; add --write to apply)"
+        ),
+    )
+    p_prom.add_argument(
+        "--write",
+        action="store_true",
+        help="With --suggest: write the recommended assertions.yaml",
     )
     p_prom.set_defaults(func=_handle_promote)
 
@@ -328,6 +366,8 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "examples:\n"
             "  failpack re-promote my-failure\n"
+            "  failpack re-promote --suggest my-failure\n"
+            "  failpack re-promote --suggest --write my-failure\n"
             "  failpack re-promote --dry-run my-failure\n"
             "\n"
             "Use after replay FAIL when the new artifact signals are intentional:\n"
@@ -340,6 +380,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print assertions that would be written without writing",
     )
+    p_reprom.add_argument(
+        "--suggest",
+        action="store_true",
+        help="Preview smarter assertion suggestions without writing",
+    )
+    p_reprom.add_argument(
+        "--write",
+        action="store_true",
+        help="With --suggest: write the recommended assertions.yaml",
+    )
     p_reprom.set_defaults(func=_handle_re_promote)
 
     p_watch = sub.add_parser(
@@ -350,6 +400,7 @@ def build_parser() -> argparse.ArgumentParser:
             "examples:\n"
             "  failpack watch fixtures/claude-code-failure.jsonl --id my-failure\n"
             "  failpack watch --claude-latest --id latest --force\n"
+            "  failpack watch --cursor-latest --id latest --force\n"
             "  failpack watch ~/.claude/projects --id latest --force\n"
             "\n"
             "On replay FAIL, prints explain (expected/actual/hint + optional diff) and exits 1.\n"
@@ -368,6 +419,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--claude-latest",
         action="store_true",
         help="Discover newest Claude Code session under ~/.claude/projects",
+    )
+    p_watch.add_argument(
+        "--cursor-latest",
+        action="store_true",
+        help=(
+            "Discover newest Cursor agent transcript under "
+            "~/.cursor/projects/*/agent-transcripts (best-effort)"
+        ),
     )
     p_watch.add_argument(
         "--from-claude-project",
@@ -665,6 +724,7 @@ def _handle_capture(args: argparse.Namespace) -> int:
         force=args.force,
         from_claude_project=args.from_claude_project,
         claude_latest=args.claude_latest,
+        cursor_latest=args.cursor_latest,
         stdin=args.stdin,
         pattern=args.pattern,
     )
@@ -673,11 +733,28 @@ def _handle_capture(args: argparse.Namespace) -> int:
 
 
 def _handle_promote(args: argparse.Namespace) -> int:
-    result = cmd_promote(args.pack_id, root=args.root, dry_run=args.dry_run)
-    if args.dry_run:
+    suggest = bool(getattr(args, "suggest", False))
+    write = bool(getattr(args, "write", False))
+    dry_run = bool(args.dry_run)
+    if write and not suggest and not dry_run:
+        # --write alone is an explicit apply alias
+        suggest = True
+        write = True
+    result = cmd_promote(
+        args.pack_id,
+        root=args.root,
+        dry_run=dry_run,
+        suggest=suggest,
+        write=write,
+    )
+    if dry_run:
         assert isinstance(result, dict)
         print(f"# dry-run: would write assertions.yaml for '{args.pack_id}'")
         sys.stdout.write(format_assertions_preview(result))
+        return 0
+    if suggest and not write:
+        assert isinstance(result, dict)
+        sys.stdout.write(format_suggest_preview(result, pack_id=args.pack_id))
         return 0
     assert not isinstance(result, dict)
     print(f"Promoted pack '{result.name}' to golden ({result / 'assertions.yaml'})")
@@ -685,11 +762,27 @@ def _handle_promote(args: argparse.Namespace) -> int:
 
 
 def _handle_re_promote(args: argparse.Namespace) -> int:
-    result = cmd_re_promote(args.pack_id, root=args.root, dry_run=args.dry_run)
-    if args.dry_run:
+    suggest = bool(getattr(args, "suggest", False))
+    write = bool(getattr(args, "write", False))
+    dry_run = bool(args.dry_run)
+    if write and not suggest and not dry_run:
+        suggest = True
+        write = True
+    result = cmd_re_promote(
+        args.pack_id,
+        root=args.root,
+        dry_run=dry_run,
+        suggest=suggest,
+        write=write,
+    )
+    if dry_run:
         assert isinstance(result, dict)
         print(f"# dry-run: would re-write assertions.yaml for '{args.pack_id}'")
         sys.stdout.write(format_assertions_preview(result))
+        return 0
+    if suggest and not write:
+        assert isinstance(result, dict)
+        sys.stdout.write(format_suggest_preview(result, pack_id=args.pack_id))
         return 0
     assert not isinstance(result, dict)
     print(
@@ -707,6 +800,7 @@ def _handle_watch(args: argparse.Namespace) -> int:
         force=args.force,
         from_claude_project=args.from_claude_project,
         claude_latest=args.claude_latest,
+        cursor_latest=args.cursor_latest,
         stdin=args.stdin,
         pattern=args.pattern,
         show_diff=not args.no_diff,

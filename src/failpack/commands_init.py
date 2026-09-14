@@ -46,8 +46,10 @@ Packs live under `packs/<id>/`.
 - `failpack status <id>` — meta + assertion summary
 - `failpack capture <transcript.jsonl|dir>` — ingest a failure session
 - `failpack capture --claude-latest` — newest session under `~/.claude/projects`
-- `failpack promote <id>` — mark golden and write assertions
-- `failpack promote --dry-run <id>` — preview assertions without writing
+- `failpack capture --cursor-latest` — newest Cursor agent transcript under `~/.cursor/projects`
+- `failpack promote <id>` — mark golden and write smarter assertions
+- `failpack promote --suggest <id>` — preview recommended assertions (add `--write` to apply)
+- `failpack promote --dry-run <id>` — preview assertions YAML without writing
 - `failpack lint` — validate pack layout + assertion schema
 - `failpack report` — markdown replay summary (CI step summary)
 - `failpack rename <old> <new>` — rename pack id + update meta

@@ -16,11 +16,22 @@ from failpack.transcript import load_jsonl, slug_from_summary, summarize_events,
 # Claude Code default session tree (relative to $HOME).
 CLAUDE_PROJECTS_REL = Path(".claude") / "projects"
 
+# Cursor agent transcript trees (relative to $HOME). Best-effort — Cursor
+# layouts evolve; see examples/cursor-latest-demo.md.
+CURSOR_PROJECTS_REL = Path(".cursor") / "projects"
+CURSOR_AGENT_TRANSCRIPTS_DIRNAME = "agent-transcripts"
+
 
 def claude_projects_dir(*, home: Path | None = None) -> Path:
     """Return ``<home>/.claude/projects`` (expandable via ``Path.home()``)."""
     base = home if home is not None else Path.home()
     return (base / CLAUDE_PROJECTS_REL).expanduser()
+
+
+def cursor_projects_dir(*, home: Path | None = None) -> Path:
+    """Return ``<home>/.cursor/projects`` (expandable via ``Path.home()``)."""
+    base = home if home is not None else Path.home()
+    return (base / CURSOR_PROJECTS_REL).expanduser()
 
 
 def find_newest_jsonl(project_dir: Path) -> Path:
@@ -39,8 +50,9 @@ def find_newest_jsonl(project_dir: Path) -> Path:
         raise FileNotFoundError(
             f"No *.jsonl transcripts under {project_dir}. "
             "Pass a directory that contains session JSONL "
-            "(Claude Code tip: ~/.claude/projects), use --claude-latest, "
-            "a fixture path, or --stdin."
+            "(Claude Code tip: ~/.claude/projects; Cursor tip: "
+            "~/.cursor/projects/*/agent-transcripts), use --claude-latest / "
+            "--cursor-latest, a fixture path, or --stdin."
         )
     return max(candidates, key=lambda p: p.stat().st_mtime)
 
@@ -61,25 +73,92 @@ def find_claude_latest(*, home: Path | None = None) -> Path:
     return find_newest_jsonl(projects)
 
 
+def _cursor_jsonl_candidates(projects: Path) -> list[Path]:
+    """Collect Cursor agent ``*.jsonl`` under known layouts.
+
+    Preferred layouts (Composer-era):
+      ``~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl``
+      ``~/.cursor/projects/<slug>/agent-transcripts/*.jsonl`` (flat / older)
+
+    Also accepts any ``*.jsonl`` under ``agent-transcripts/`` (including
+    ``subagents/``) as a best-effort fallback. Prefer non-subagent files when
+    mtimes tie by sorting subagent paths after main session paths.
+    """
+    if not projects.is_dir():
+        return []
+
+    found: list[Path] = []
+    for agent_root in projects.rglob(CURSOR_AGENT_TRANSCRIPTS_DIRNAME):
+        if not agent_root.is_dir():
+            continue
+        for path in agent_root.rglob("*.jsonl"):
+            if path.is_file():
+                found.append(path)
+
+    # Fallback: any *.jsonl directly under a project slug (rare / exports)
+    if not found:
+        found = [p for p in projects.rglob("*.jsonl") if p.is_file()]
+
+    return found
+
+
+def find_cursor_latest(*, home: Path | None = None) -> Path:
+    """Discover the newest Cursor agent transcript under ``~/.cursor/projects``.
+
+    Best-effort discovery of common Cursor layouts. ``home`` overrides
+    ``Path.home()`` so tests MUST use a fake HOME — never scan a real
+    ``~/.cursor`` tree in CI.
+
+    Raises ``FileNotFoundError`` with a clear message when nothing is found.
+    """
+    projects = cursor_projects_dir(home=home)
+    if not projects.is_dir():
+        raise FileNotFoundError(
+            f"Cursor projects directory not found: {projects}. "
+            "No ~/.cursor/projects tree present. Export a Cursor agent "
+            "transcript as JSONL and pass the path, or use --claude-latest / "
+            "a fixture. See examples/cursor-latest-demo.md."
+        )
+
+    candidates = _cursor_jsonl_candidates(projects)
+    if not candidates:
+        raise FileNotFoundError(
+            f"No Cursor agent *.jsonl transcripts under {projects}. "
+            "Expected something like "
+            "~/.cursor/projects/<slug>/agent-transcripts/<uuid>/<uuid>.jsonl. "
+            "Export a session as JSONL and pass the path, or see "
+            "examples/cursor-latest-demo.md."
+        )
+
+    def _sort_key(p: Path) -> tuple[float, int]:
+        # Prefer main session transcripts over subagents/ when mtime ties.
+        is_sub = 1 if "subagents" in p.parts else 0
+        return (p.stat().st_mtime, -is_sub)
+
+    return max(candidates, key=_sort_key)
+
+
 def resolve_transcript_path(
     transcript: Path | None,
     *,
     from_claude_project: Path | None = None,
     claude_latest: bool = False,
+    cursor_latest: bool = False,
     stdin: bool = False,
     pattern: str | None = None,
     home: Path | None = None,
 ) -> Path:
-    """Resolve the transcript file from path, glob, Claude helpers, or stdin.
+    """Resolve the transcript file from path, glob, Claude/Cursor helpers, or stdin.
 
     Exactly one input mode must be chosen (path/glob, --from-claude-project,
-    --claude-latest, or --stdin).
+    --claude-latest, --cursor-latest, or --stdin).
     """
     modes = sum(
         [
             transcript is not None and str(transcript) != "-",
             from_claude_project is not None,
             claude_latest,
+            cursor_latest,
             stdin or (transcript is not None and str(transcript) == "-"),
             pattern is not None,
         ]
@@ -92,17 +171,21 @@ def resolve_transcript_path(
             "Nothing to capture. Try one of:\n"
             "  failpack demo\n"
             "  failpack capture --claude-latest --id my-failure\n"
+            "  failpack capture --cursor-latest --id my-failure\n"
             "  failpack capture path/to/session.jsonl --id my-failure\n"
             "  failpack capture --stdin --id my-failure < session.jsonl"
         )
     if modes > 1:
         raise ValueError(
             "Use only one of: transcript path / glob, --claude-latest, "
-            "--from-claude-project, or --stdin."
+            "--cursor-latest, --from-claude-project, or --stdin."
         )
 
     if claude_latest:
         return find_claude_latest(home=home)
+
+    if cursor_latest:
+        return find_cursor_latest(home=home)
 
     if from_claude_project is not None:
         return find_newest_jsonl(from_claude_project)
@@ -150,8 +233,8 @@ def resolve_transcript_path(
         raise FileNotFoundError(
             f"Transcript not found: {path}. "
             "Pass a .jsonl file, a directory containing *.jsonl "
-            "(e.g. a Claude Code projects folder), --claude-latest, "
-            "--from-claude-project, --stdin, or a glob."
+            "(e.g. a Claude Code / Cursor projects folder), --claude-latest, "
+            "--cursor-latest, --from-claude-project, --stdin, or a glob."
         )
     return path.resolve()
 
@@ -164,6 +247,7 @@ def cmd_capture(
     force: bool = False,
     from_claude_project: Path | None = None,
     claude_latest: bool = False,
+    cursor_latest: bool = False,
     stdin: bool = False,
     pattern: str | None = None,
     home: Path | None = None,
@@ -172,6 +256,7 @@ def cmd_capture(
         transcript,
         from_claude_project=from_claude_project,
         claude_latest=claude_latest,
+        cursor_latest=cursor_latest,
         stdin=stdin,
         pattern=pattern,
         home=home,
@@ -207,6 +292,8 @@ def cmd_capture(
             source_label = "<stdin>"
         elif claude_latest:
             source_label = f"<claude-latest:{source}>"
+        elif cursor_latest:
+            source_label = f"<cursor-latest:{source}>"
         elif from_claude_project is not None:
             source_label = str(source)
         else:

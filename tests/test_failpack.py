@@ -17,6 +17,7 @@ from failpack.color import paint, use_color
 from failpack.commands_capture import (
     cmd_capture,
     find_claude_latest,
+    find_cursor_latest,
     find_newest_jsonl,
     resolve_transcript_path,
 )
@@ -24,7 +25,7 @@ from failpack.commands_doctor import cmd_doctor
 from failpack.commands_init import cmd_init
 from failpack.commands_list import cmd_list, format_table
 from failpack.commands_migrate import cmd_migrate
-from failpack.commands_promote import cmd_promote, cmd_re_promote
+from failpack.commands_promote import cmd_promote, cmd_re_promote, suggest_assertions
 from failpack.commands_replay import cmd_replay, cmd_replay_all
 from failpack.commands_show import cmd_show
 from failpack.commands_status import cmd_status
@@ -540,8 +541,8 @@ def test_replay_all_json_includes_packs(workspace: Path) -> None:
     assert payload["packs"][0]["pack_id"] == DEMO_ID
 
 
-def test_version_is_1_0_0() -> None:
-    assert __version__ == "1.0.0"
+def test_version_is_1_1_0() -> None:
+    assert __version__ == "1.1.0"
     parser = build_parser()
     with pytest.raises(SystemExit) as exc:
         parser.parse_args(["--version"])
@@ -925,7 +926,9 @@ def test_help_mentions_claude_latest_and_re_promote() -> None:
     parser = build_parser()
     help_text = parser.format_help()
     assert "--claude-latest" in help_text or "claude-latest" in help_text
+    assert "cursor-latest" in help_text
     assert "re-promote" in help_text
+    assert "suggest" in help_text
     cap_help = None
     for action in parser._subparsers._group_actions:  # noqa: SLF001
         for name, sub in action.choices.items():
@@ -933,26 +936,41 @@ def test_help_mentions_claude_latest_and_re_promote() -> None:
                 cap_help = sub.format_help()
     assert cap_help is not None
     assert "--claude-latest" in cap_help
+    assert "--cursor-latest" in cap_help
 
 
 def test_examples_docs_exist() -> None:
     demo = REPO / "examples" / "five-minute-demo.sh"
     assert demo.is_file()
     text = demo.read_text(encoding="utf-8")
-    assert "0.7" in text or "failpack demo" in text
+    assert "failpack demo" in text
     claude_doc = REPO / "examples" / "claude-latest-demo.md"
     assert claude_doc.is_file()
     body = claude_doc.read_text(encoding="utf-8")
     assert "--claude-latest" in body
     assert "re-promote" in body
+    cursor_doc = REPO / "examples" / "cursor-latest-demo.md"
+    assert cursor_doc.is_file()
+    cursor_body = cursor_doc.read_text(encoding="utf-8")
+    assert "--cursor-latest" in cursor_body
+    assert "fake HOME" in cursor_body or "fake $HOME" in cursor_body or "fake-home" in cursor_body
+    walk = REPO / "examples" / "STRANGER_WALKTHROUGH.md"
+    assert walk.is_file()
+    walk_body = walk.read_text(encoding="utf-8")
+    assert "git+https://github.com/JiangSkirk/failpack.git" in walk_body
+    assert "doctor --score" in walk_body
+    assert "failpack demo" in walk_body
 
 
 def test_changelog_and_contributing_exist() -> None:
     assert (REPO / "CHANGELOG.md").is_file()
     assert (REPO / "CONTRIBUTING.md").is_file()
     changelog = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "1.1.0" in changelog
     assert "1.0.0" in changelog
     assert "doctor --score" in changelog
+    assert "--suggest" in changelog
+    assert "--cursor-latest" in changelog
     assert "0.9.0" in changelog
     assert "0.7.0" in changelog
     assert "0.6.0" in changelog
@@ -1109,6 +1127,7 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "failpack demo" in text
     assert "failpack show" in text
     assert "failpack explain" in text
+    assert "1.1.0" in text
     assert "1.0.0" in text
     assert "doctor --score" in text
     assert 'git+https://github.com/JiangSkirk/failpack.git' in text
@@ -1120,6 +1139,9 @@ def test_readme_has_three_command_happy_path() -> None:
     assert "step-summary" in text
     assert "tool_denied_contains" in text
     assert "bash_output_contains" in text
+    assert "--suggest" in text
+    assert "--cursor-latest" in text
+    assert "STRANGER_WALKTHROUGH" in text
     assert "badge.svg" in text
     assert "Stet" in text
     assert "AgentClash" in text
@@ -1289,6 +1311,8 @@ def test_cli_completion_and_lifecycle_help(capsys: pytest.CaptureFixture[str]) -
     assert {"rm", "rename", "completion", "explain"} <= names
     assert promote_help is not None
     assert "--dry-run" in promote_help
+    assert "--suggest" in promote_help
+    assert "--write" in promote_help
 
 
 def test_cli_rm_rename(
@@ -1519,4 +1543,166 @@ def test_shipped_demo_tool_denied_has_new_asserts() -> None:
     assert assertions["tool_denied_contains"]
     assert assertions["bash_output_contains"]
     report = cmd_replay(DEMO_TOOL_DENIED, root=REPO)
+    assert report.ok, "\n".join(report.summary_lines())
+
+
+def test_suggest_assertions_includes_tool_denied(workspace: Path) -> None:
+    cmd_capture(FIXTURE_TOOL_DENIED, pack_id="suggest-me", root=workspace)
+    pack = workspace / ".failpack" / "packs" / "suggest-me"
+    meta = read_meta(pack)
+    suggested = suggest_assertions(pack, meta)
+    assert suggested["exit_code"] == 126
+    assert suggested["fingerprints"]
+    assert any(
+        (e if isinstance(e, str) else e.get("contains")) == "Bash"
+        for e in suggested["tool_denied_contains"]
+    )
+    assert suggested["bash_output_contains"]
+    # Preview only — no write
+    result = cmd_promote("suggest-me", root=workspace, suggest=True)
+    assert isinstance(result, dict)
+    assert not (pack / "assertions.yaml").exists()
+    # Apply with --write
+    written = cmd_promote("suggest-me", root=workspace, suggest=True, write=True)
+    assert not isinstance(written, dict)
+    assert (pack / "assertions.yaml").is_file()
+    report = cmd_replay("suggest-me", root=workspace)
+    assert report.ok, "\n".join(report.summary_lines())
+
+
+def test_cli_promote_suggest_and_write(
+    workspace: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    cmd_capture(FIXTURE_TOOL_DENIED, pack_id="cli-suggest", root=workspace)
+    with pytest.raises(SystemExit) as exc:
+        main(["--root", str(workspace), "promote", "--suggest", "cli-suggest"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "Suggested assertions" in out
+    assert "tool_denied_contains" in out
+    assert "exit_code" in out
+    pack = workspace / ".failpack" / "packs" / "cli-suggest"
+    assert not (pack / "assertions.yaml").exists()
+
+    with pytest.raises(SystemExit) as exc:
+        main(
+            [
+                "--root",
+                str(workspace),
+                "promote",
+                "--suggest",
+                "--write",
+                "cli-suggest",
+            ]
+        )
+    assert exc.value.code == 0
+    assert "Promoted" in capsys.readouterr().out
+    assert (pack / "assertions.yaml").is_file()
+
+
+def _fake_cursor_home(tmp_path: Path) -> Path:
+    """Build fake $HOME with ~/.cursor/projects/.../agent-transcripts (never real ~/.cursor)."""
+    home = tmp_path / "fake-cursor-home"
+    session = "11111111-2222-3333-4444-555555555555"
+    agent_root = home / ".cursor" / "projects" / "demo-slug" / "agent-transcripts"
+    older_dir = agent_root / "00000000-0000-0000-0000-000000000000"
+    newer_dir = agent_root / session
+    older_dir.mkdir(parents=True)
+    newer_dir.mkdir(parents=True)
+    (older_dir / "00000000-0000-0000-0000-000000000000.jsonl").write_text(
+        FIXTURE.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    # Subagent created first (older mtime) so main session wins as newest
+    sub = newer_dir / "subagents"
+    sub.mkdir()
+    (sub / "subagent.jsonl").write_text(
+        FIXTURE.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    time.sleep(0.05)
+    (newer_dir / f"{session}.jsonl").write_text(
+        FIXTURE_WRONG_CMD.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    return home
+
+
+def test_find_cursor_latest_uses_home_fixture(tmp_path: Path) -> None:
+    home = _fake_cursor_home(tmp_path)
+    found = find_cursor_latest(home=home)
+    assert found.name.endswith(".jsonl")
+    assert "11111111-2222-3333-4444-555555555555" in found.as_posix()
+    assert "subagents" not in found.parts
+    assert found.is_relative_to(home / ".cursor" / "projects")
+
+
+def test_capture_cursor_latest_with_fake_home(workspace: Path, tmp_path: Path) -> None:
+    home = _fake_cursor_home(tmp_path)
+    pack = cmd_capture(
+        None,
+        pack_id="cursor-latest-pack",
+        root=workspace,
+        cursor_latest=True,
+        home=home,
+    )
+    meta = read_meta(pack)
+    assert meta["id"] == "cursor-latest-pack"
+    assert meta["exit_code"] == 4
+    assert meta["source_transcript"].startswith("<cursor-latest:")
+
+
+def test_cli_capture_cursor_latest_honors_HOME(
+    workspace: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    home = _fake_cursor_home(tmp_path)
+    monkeypatch.setenv("HOME", str(home))
+    with pytest.raises(SystemExit) as exc:
+        main(
+            [
+                "--root",
+                str(workspace),
+                "capture",
+                "--cursor-latest",
+                "--id",
+                "via-cursor-cli",
+            ]
+        )
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "via-cursor-cli" in out
+    meta = read_meta(workspace / ".failpack" / "packs" / "via-cursor-cli")
+    assert meta["exit_code"] == 4
+
+
+def test_cursor_latest_missing_projects_dir(tmp_path: Path) -> None:
+    empty_home = tmp_path / "empty-cursor-home"
+    empty_home.mkdir()
+    with pytest.raises(FileNotFoundError, match=r"\.cursor/projects"):
+        find_cursor_latest(home=empty_home)
+
+
+def test_cursor_latest_empty_agent_transcripts(tmp_path: Path) -> None:
+    home = tmp_path / "empty-agent-home"
+    (home / ".cursor" / "projects" / "slug" / "agent-transcripts").mkdir(parents=True)
+    with pytest.raises(FileNotFoundError, match="No Cursor agent"):
+        find_cursor_latest(home=home)
+
+
+def test_cursor_latest_conflicts_with_claude_latest(workspace: Path, tmp_path: Path) -> None:
+    home = _fake_cursor_home(tmp_path)
+    with pytest.raises(ValueError, match="only one"):
+        resolve_transcript_path(
+            None, claude_latest=True, cursor_latest=True, home=home
+        )
+
+
+def test_promote_writes_tool_denied_for_fixture(workspace: Path) -> None:
+    """Smarter promote should auto-include tool_denied when transcript has it."""
+    _capture_and_promote(workspace, FIXTURE_TOOL_DENIED, "auto-tool")
+    data = yaml.safe_load(
+        (workspace / ".failpack" / "packs" / "auto-tool" / "assertions.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert data.get("tool_denied_contains")
+    assert data.get("bash_output_contains")
+    report = cmd_replay("auto-tool", root=workspace)
     assert report.ok, "\n".join(report.summary_lines())
