@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,7 @@ import yaml
 
 from failpack.assertions_schema import validate_assertions
 from failpack.diffutil import write_expected_snapshot
+from failpack.events import bash_outputs, denied_tool_names, load_pack_events
 from failpack.pack import (
     artifacts_dir,
     glob_fingerprint,
@@ -19,7 +21,7 @@ from failpack.pack import (
     write_assertions,
     write_meta,
 )
-from failpack.paths import require_pack
+from failpack.paths import TRANSCRIPT_NAME, require_pack
 from failpack.schema import with_current_schema
 
 
@@ -89,6 +91,129 @@ def _default_assertions(pack: Path, meta: dict[str, Any]) -> dict[str, Any]:
     return assertions
 
 
+def _pick_bash_needles(outputs: list[str]) -> list[dict[str, str]]:
+    """Pick distinctive bash_output_contains needles from tool results."""
+    if not outputs:
+        return []
+    suggestions: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    def _add(needle: str, *, match: str) -> None:
+        needle = needle.strip()
+        if len(needle) < 8:
+            return
+        needle = needle[:120]
+        key = f"{match}:{needle}"
+        if key in seen:
+            return
+        seen.add(key)
+        suggestions.append({"contains": needle, "match": match})
+
+    # Prefer last Bash output for the session's final failure signal
+    last = outputs[-1]
+    for line in last.splitlines():
+        line = line.strip()
+        if len(line) >= 12 and re.search(
+            r"(error|denied|fail|traceback|exception|not found|exit)", line, re.I
+        ):
+            _add(line, match="last")
+            break
+    if not any(s.get("match") == "last" for s in suggestions) and last.strip():
+        # Fall back to a stable chunk of the last output
+        chunk = next(
+            (ln.strip() for ln in last.splitlines() if len(ln.strip()) >= 12),
+            last.strip()[:80],
+        )
+        _add(chunk, match="last")
+
+    # Also suggest a distinctive "any" needle from earlier outputs when useful
+    for out in outputs:
+        for line in out.splitlines():
+            line = line.strip()
+            if len(line) < 8:
+                continue
+            if re.search(r"\.(toml|json|ya?ml|py|lock)\b", line) or re.search(
+                r"\b(pyproject|package\.json|Cargo\.toml)\b", line
+            ):
+                _add(line.split()[0] if " " in line and len(line.split()[0]) >= 8 else line, match="any")
+                break
+        if any(s.get("match") == "any" for s in suggestions):
+            break
+
+    return suggestions
+
+
+def suggest_assertions(pack: Path, meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Analyze pack artifacts + transcript and recommend golden assertions.
+
+    Extends the default fingerprint/exit_code set with transcript-derived
+    ``tool_denied_contains`` / ``bash_output_contains`` when signals exist.
+    """
+    if meta is None:
+        meta = read_meta(pack)
+    assertions = _default_assertions(pack, meta)
+
+    transcript = pack / TRANSCRIPT_NAME
+    if transcript.is_file():
+        try:
+            events = load_pack_events(transcript)
+        except (OSError, ValueError):
+            events = []
+        if events:
+            denied = denied_tool_names(events)
+            if denied:
+                assertions["tool_denied_contains"] = [
+                    {"contains": name} for name in denied
+                ]
+            outs = bash_outputs(events)
+            bash_needles = _pick_bash_needles(outs)
+            if bash_needles:
+                assertions["bash_output_contains"] = bash_needles
+
+    return validate_assertions(assertions)
+
+
+def format_suggest_preview(assertions: dict[str, Any], *, pack_id: str) -> str:
+    """Human-readable recommendation header + YAML body for ``--suggest``."""
+    lines: list[str] = [
+        f"# Suggested assertions for '{pack_id}'",
+        "# Analyzed: artifacts + transcript events (ticks)",
+        "#",
+        "# Recommendations:",
+    ]
+    if "exit_code" in assertions:
+        lines.append(f"#   exit_code: {assertions['exit_code']}")
+    fps = assertions.get("fingerprints") or []
+    if fps:
+        paths = ", ".join(fp["path"] for fp in fps[:8])
+        more = f" (+{len(fps) - 8} more)" if len(fps) > 8 else ""
+        lines.append(f"#   fingerprints: {len(fps)} path(s) — {paths}{more}")
+    for entry in assertions.get("tool_denied_contains") or []:
+        needle = entry if isinstance(entry, str) else entry.get("contains")
+        lines.append(f"#   tool_denied_contains: {needle}")
+    for entry in assertions.get("bash_output_contains") or []:
+        if isinstance(entry, str):
+            lines.append(f"#   bash_output_contains: {entry!r}")
+        else:
+            match = entry.get("match") or "any"
+            lines.append(
+                f"#   bash_output_contains: {entry.get('contains')!r} (match={match})"
+            )
+    if not assertions.get("tool_denied_contains") and not assertions.get(
+        "bash_output_contains"
+    ):
+        lines.append(
+            "#   (no tool_denied / bash_output signals found — "
+            "fingerprints + exit_code only)"
+        )
+    lines.append("#")
+    lines.append(f"# Apply with: failpack promote --suggest --write {pack_id}")
+    lines.append("# Or keep editing the YAML below before writing.")
+    lines.append("")
+    lines.append(format_assertions_preview(assertions))
+    return "\n".join(lines)
+
+
 def _write_expected_snapshots(pack: Path, fingerprints: list[dict[str, str]]) -> None:
     """Snapshot fingerprinted text artifacts for diff-aware explain on FAIL."""
     expected_root = pack / "expected"
@@ -109,17 +234,38 @@ def cmd_promote(
     *,
     root: Path | None = None,
     dry_run: bool = False,
+    suggest: bool = False,
+    write: bool = False,
 ) -> Path | dict[str, Any]:
     """Promote a pack to golden.
 
-    When *dry_run* is True, return the assertions dict that would be written
-    without touching the filesystem (no assertions.yaml, expected/, or meta).
+    * ``suggest=True`` (no write): return suggested assertions for preview.
+    * ``suggest=True`` + ``write=True``: write suggested assertions (smarter).
+    * default / ``write`` without suggest: write suggested assertions
+      (smarter promote — same builder as ``--suggest``).
+    * ``dry_run=True``: return assertions that would be written (no filesystem
+      changes). Cannot combine with ``suggest`` (use one preview mode).
+
+    When *dry_run* or *suggest* (without *write*), return the assertions dict
+    without touching the filesystem.
     """
+    if dry_run and suggest:
+        raise ValueError("Use --suggest or --dry-run, not both.")
+    if write and dry_run:
+        raise ValueError("Use --write or --dry-run, not both.")
+    if write and not suggest:
+        # Allow --write alone as explicit "apply" alias for promote write path
+        pass
+
     pack = require_pack(pack_id, root)
     meta = read_meta(pack)
-    assertions = validate_assertions(_default_assertions(pack, meta))
-    if dry_run:
+    # Smarter promote: always build from transcript+artifacts suggestions
+    assertions = suggest_assertions(pack, meta)
+
+    preview_only = dry_run or (suggest and not write)
+    if preview_only:
         return assertions
+
     write_assertions(pack, assertions)
     _write_expected_snapshots(pack, assertions.get("fingerprints") or [])
     meta["status"] = "golden"
@@ -133,6 +279,8 @@ def cmd_re_promote(
     *,
     root: Path | None = None,
     dry_run: bool = False,
+    suggest: bool = False,
+    write: bool = False,
 ) -> Path | dict[str, Any]:
     """Refresh golden assertions from *current* pack artifacts.
 
@@ -145,4 +293,10 @@ def cmd_re_promote(
     if meta.get("status") not in {"golden", "captured"}:
         # Still allow refresh when status is odd but pack exists
         pass
-    return cmd_promote(pack_id, root=root, dry_run=dry_run)
+    return cmd_promote(
+        pack_id,
+        root=root,
+        dry_run=dry_run,
+        suggest=suggest,
+        write=write,
+    )

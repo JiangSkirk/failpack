@@ -1,7 +1,7 @@
 # FailPack
 
 [![FailPack replay](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml/badge.svg)](https://github.com/JiangSkirk/failpack/actions/workflows/failpack-replay.yml)
-[![version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
+[![version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/JiangSkirk/failpack/releases)
 
 **FailPack** turns a coding-agent **failure session** into a **golden CI regression pack**.
 
@@ -21,7 +21,9 @@ That is the whole product loop: **install → demo**. Optional next steps after 
 ```bash
 failpack doctor --score              # 0–100 readiness + checklist
 failpack capture --claude-latest --id my-failure
-failpack promote my-failure
+failpack capture --cursor-latest --id cursor-fail
+failpack promote --suggest my-failure
+failpack promote --suggest --write my-failure
 failpack replay my-failure
 failpack explain my-failure          # when something FAILs
 ```
@@ -50,15 +52,17 @@ failpack demo
 Then confirm readiness:
 
 ```bash
-failpack --version          # → failpack 1.0.0
+failpack --version          # → failpack 1.1.0
 failpack doctor --score     # 0–100 + checklist (exit 0 unless --strict)
 ```
+
+Stranger copy-paste session: [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md).
 
 `failpack doctor` checks Python, PyYAML, whether `~/.claude/projects` exists (and how many sessions), `.failpack/` layout, and pack counts — with tips like `capture --claude-latest` when sessions are found. `--score` adds a readiness score over **python**, **packs_dir**, **claude_projects**, **lint**, and **golden_count**. Doctor exits **0** by default; pass `--strict` to fail the process when checks FAIL.
 
 Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force).
 
-## What you get (v1.0)
+## What you get (v1.1)
 
 | Command | What it does |
 |---|---|
@@ -71,8 +75,11 @@ Colors are on for TTYs. Set `NO_COLOR=1` to disable (or `FORCE_COLOR=1` to force
 | `failpack show <id>` | **Pretty inspect** status, exit, asserts, artifacts (`--json`) |
 | `failpack status <id>` | Show meta + assertion summary for one pack |
 | `failpack capture --claude-latest` | **Magic path:** newest Claude Code session under `~/.claude/projects` |
+| `failpack capture --cursor-latest` | **Magic path:** newest Cursor agent transcript under `~/.cursor/projects` |
 | `failpack capture <transcript.jsonl\|dir>` | Ingest a Claude-Code-like JSONL into `.failpack/packs/<id>/` |
-| `failpack promote <id>` | Mark golden + write `assertions.yaml` (+ expected text snapshots) |
+| `failpack promote <id>` | Mark golden + write smarter `assertions.yaml` (+ expected snapshots) |
+| `failpack promote --suggest <id>` | Preview recommended asserts (exit / fingerprints / tool_denied / bash) |
+| `failpack promote --suggest --write <id>` | Apply suggested assertions |
 | `failpack promote --dry-run <id>` | Preview assertions YAML **without** writing |
 | `failpack re-promote <id>` | Refresh assertions from **current** artifacts after intentional fix |
 | `failpack lint [id]` | Validate pack layout + assertion schema (no replay) |
@@ -127,11 +134,13 @@ failpack import demo-missing-import.tgz --rename shared-copy
 failpack replay shared-copy
 ```
 
-Claude latest magic path (screenshots-as-text):
+Claude / Cursor latest magic paths (screenshots-as-text):
 
 ```bash
 # see examples/claude-latest-demo.md
 failpack capture --claude-latest --id my-failure
+# see examples/cursor-latest-demo.md (best-effort; fake HOME in tests)
+failpack capture --cursor-latest --id cursor-fail
 ```
 
 ### Capture your own failure
@@ -141,6 +150,9 @@ failpack init
 
 # magic: newest Claude Code session under ~/.claude/projects
 failpack capture --claude-latest --id my-failure
+
+# magic: newest Cursor agent transcript under ~/.cursor/projects
+failpack capture --cursor-latest --id cursor-fail
 
 # path to a fixture / exported transcript
 failpack capture fixtures/claude-code-failure.jsonl --id my-failure
@@ -177,8 +189,10 @@ Break a golden assertion (or mutate an artifact under `.failpack/packs/<id>/arti
 Manage packs after capture without hand-editing `.failpack/packs/`:
 
 ```bash
+failpack promote --suggest my-failure   # preview recommended asserts
+failpack promote --suggest --write my-failure  # apply suggestions
 failpack promote --dry-run my-failure   # preview assertions.yaml (no write)
-failpack promote my-failure             # write assertions + mark golden
+failpack promote my-failure             # write smarter assertions + mark golden
 failpack lint my-failure                # schema / layout validate (no replay)
 failpack report                         # markdown summary (CI-friendly)
 failpack report --github                # append to $GITHUB_STEP_SUMMARY
@@ -196,15 +210,19 @@ Unknown kinds (e.g. a typo’d top-level key) or missing `path` / `sha256` / `co
 raise a clear error instead of being silently ignored. `failpack lint` surfaces the
 same checks as a dedicated command.
 
-### Cursor-ish transcripts (manual)
+### Cursor agent transcripts
 
-FailPack does not auto-scan Cursor installs. Export or copy a JSONL transcript, then:
+`--cursor-latest` best-effort scans `~/.cursor/projects/*/agent-transcripts` for the
+newest `*.jsonl` (main session preferred over `subagents/` on mtime ties). Tests
+must use a **fake HOME**. Manual path still works:
 
 ```bash
+failpack capture --cursor-latest --id cursor-fail
 failpack capture /path/to/exported-session.jsonl --id cursor-fail
 ```
 
-See [`examples/claude-latest-demo.md`](examples/claude-latest-demo.md) for details.
+See [`examples/cursor-latest-demo.md`](examples/cursor-latest-demo.md) and
+[`examples/claude-latest-demo.md`](examples/claude-latest-demo.md).
 
 ### Pre-commit
 
@@ -346,7 +364,7 @@ failpack replay --all --json
 failpack migrate
 ```
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES_1.0.0.md`](RELEASE_NOTES_1.0.0.md), and [`docs/PACKS.md`](docs/PACKS.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md), [`RELEASE_NOTES_1.0.0.md`](RELEASE_NOTES_1.0.0.md), [`examples/STRANGER_WALKTHROUGH.md`](examples/STRANGER_WALKTHROUGH.md), and [`docs/PACKS.md`](docs/PACKS.md).
 
 Requires Python 3.11+.
 
